@@ -93,10 +93,7 @@ services:
       - OLLAMA_KEEP_ALIVE=24h
     ports:
       - "11434:11434"
-    device_requests:
-      - driver: nvidia
-        count: 1
-        capabilities: ["gpu"]
+    gpus: all
 
   kafka-pubsub:
     build:
