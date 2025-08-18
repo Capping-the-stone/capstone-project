@@ -1,0 +1,60 @@
+version: "3.9"
+
+services:
+  superlit-frontend:
+    build:
+      context: ./superlit-frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+
+  superlit-backend:
+    build:
+      context: ./superlit-backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+
+  kafka-pubsub:
+    build:
+      context: ./kafka-pubsub
+      dockerfile: Dockerfile
+    restart: unless-stopped
+
+  pyspark-streamproc:
+    build:
+      context: ./pyspark-streamproc
+      dockerfile: Dockerfile
+    restart: unless-stopped
+
+  faiss-simsearch:
+    build:
+      context: ./faiss-simsearch
+      dockerfile: Dockerfile
+    restart: unless-stopped
+
+  cassandra-logdb:
+    build:
+      context: ./cassandra-logdb
+      dockerfile: Dockerfile
+    restart: unless-stopped
+
+  ml:
+    build:
+      context: ./ml
+      dockerfile: Dockerfile
+    restart: unless-stopped
+
+  teacher-backend:
+    build:
+      context: ./teacher-backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+
+  teacher-frontend:
+    build:
+      context: ./teacher-frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+
+# All services share the default network implicitly created by Compose
+networks:
+  default: {}
