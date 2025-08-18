@@ -1,0 +1,1 @@
+whitelist /superlit/backend/playground

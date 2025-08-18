@@ -1,17 +1,102 @@
 version: "3.9"
 
 services:
-  superlit-frontend:
-    build:
-      context: ./superlit-frontend
-      dockerfile: Dockerfile
+  superlit-backend-prod:
+    profiles: [prod]
+    working_dir: /superlit/backend
+    env_file: ./superlit-backend/.env
     restart: unless-stopped
-
-  superlit-backend:
     build:
       context: ./superlit-backend
       dockerfile: Dockerfile
+      target: prod
+    privileged: true
+    depends_on:
+      - postgres
+      - ollama
+
+  superlit-frontend-prod:
+    profiles: [prod]
+    env_file:
+      - ./superlit-frontend/.env
     restart: unless-stopped
+    build:
+      context: ./superlit-frontend
+      dockerfile: Dockerfile
+      target: prod
+    ports:
+      - "80:80"
+    depends_on:
+      - superlit-backend-prod
+
+  superlit-backend-dev:
+    profiles: [dev]
+    env_file: ./superlit-backend/.env
+    restart: unless-stopped
+    build:
+      context: ./superlit-backend
+      dockerfile: Dockerfile
+      target: dev
+    privileged: true
+    ports:
+      - "6969:6969"
+    depends_on:
+      - postgres
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./superlit-backend
+          target: /superlit/backend
+
+  superlit-frontend-dev:
+    profiles: [dev]
+    env_file:
+      - ./superlit-frontend/.env
+    restart: unless-stopped
+    build:
+      context: ./superlit-frontend
+      dockerfile: Dockerfile
+      target: dev
+    ports:
+      - "5173:5173"
+    depends_on:
+      - superlit-backend-dev
+    develop:
+      watch:
+        - action: sync
+          path: ./superlit-frontend
+          target: /superlit/frontend
+          ignore:
+            - node_modules/
+        - action: rebuild
+          path: ./superlit-frontend/package.json
+
+  postgres:
+    profiles: [prod, dev]
+    image: postgres:15-alpine
+    env_file: ./superlit-backend/.env
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: superlit_db
+      POSTGRES_USER: superlit_user
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  ollama:
+    profiles: [prod]
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ./superlit-AI:/models
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+    ports:
+      - "11434:11434"
+    device_requests:
+      - driver: nvidia
+        count: 1
+        capabilities: ["gpu"]
 
   kafka-pubsub:
     build:
@@ -55,6 +140,9 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
 
-# All services share the default network implicitly created by Compose
+volumes:
+  postgres_data:
+  ollama_data:
+
 networks:
   default: {}

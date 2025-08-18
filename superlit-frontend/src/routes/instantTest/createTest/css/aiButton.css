@@ -1,0 +1,49 @@
+.ai-btn {
+  position: relative;
+  display: inline-block;
+  width: 200px;
+  height: 60px;
+  text-align: center;
+  line-height: 60px;
+  color: #fff;
+  text-decoration: none;
+  box-sizing: border-box;
+  background: linear-gradient(90deg, #03a9f4, #f441a5, #ffeb3b, #03a9f4);
+  background-size: 400%;
+  border-radius: 30px;
+  z-index: 1;
+}
+ 
+.ai-btn:hover {
+  animation: animate 8s linear infinite;
+}
+ 
+@keyframes animate {
+  0% {
+    background-position: 0%;
+  }
+  100% {
+    background-position: 400%;
+  }
+}
+ 
+.ai-btn:before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  bottom: -5px;
+  left: -5px;
+  z-index: -1;
+  background: linear-gradient(90deg, #03a9f4, #f441a5, #ffeb3b, #03a9f4);
+  background-size: 400%;
+  border-radius: 40px;
+  opacity: 0;
+  transition: .5s;
+}
+ 
+.ai-btn:hover:before {
+  filter: blur(20px);
+  opacity: 1;
+  animation: animate 8s linear infinite;
+}
