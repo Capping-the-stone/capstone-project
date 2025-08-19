@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   superlit-backend-prod:
     profiles: [prod]
@@ -14,11 +12,14 @@ services:
     depends_on:
       - postgres
       - ollama
+      - kafka-1-prod
+      - kafka-2-prod
+      - kafka-3-prod
+    environment:
+      - KAFKA_BROKERS=kafka-1-prod:9092,kafka-2-prod:9092,kafka-3-prod:9092
 
   superlit-frontend-prod:
     profiles: [prod]
-    env_file:
-      - ./superlit-frontend/.env
     restart: unless-stopped
     build:
       context: ./superlit-frontend
@@ -28,6 +29,8 @@ services:
       - "80:80"
     depends_on:
       - superlit-backend-prod
+    environment:
+      - BACKEND_URL=http://superlit-backend-prod:6969
 
   superlit-backend-dev:
     profiles: [dev]
@@ -42,6 +45,9 @@ services:
       - "6969:6969"
     depends_on:
       - postgres
+      - kafka-1-dev
+    environment:
+      - KAFKA_BROKERS=kafka-1-dev:9092
     develop:
       watch:
         - action: sync+restart
@@ -50,8 +56,6 @@ services:
 
   superlit-frontend-dev:
     profiles: [dev]
-    env_file:
-      - ./superlit-frontend/.env
     restart: unless-stopped
     build:
       context: ./superlit-frontend
@@ -61,6 +65,8 @@ services:
       - "5173:5173"
     depends_on:
       - superlit-backend-dev
+    environment:
+      - BACKEND_URL=http://superlit-backend-dev:6969
     develop:
       watch:
         - action: sync
@@ -72,7 +78,6 @@ services:
           path: ./superlit-frontend/package.json
 
   postgres:
-    profiles: [prod, dev]
     image: postgres:15-alpine
     env_file: ./superlit-backend/.env
     restart: unless-stopped
@@ -95,43 +100,116 @@ services:
       - "11434:11434"
     gpus: all
 
-  kafka-pubsub:
+  kafka-1-prod:
+    profiles: [prod]
     build:
       context: ./kafka-pubsub
-      dockerfile: Dockerfile
     restart: unless-stopped
+    environment:
+      - KAFKA_KRAFT_CLUSTER_ID=q1w2e3r4t5y6u7i8o9p0aa
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-1-prod:9093,2@kafka-2-prod:9093,3@kafka-3-prod:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-1-prod:9092
+    volumes:
+      - kafka_data_1:/bitnami/kafka
+
+  kafka-2-prod:
+    profiles: [prod]
+    build:
+      context: ./kafka-pubsub
+    restart: unless-stopped
+    environment:
+      - KAFKA_KRAFT_CLUSTER_ID=q1w2e3r4t5y6u7i8o9p0aa
+      - KAFKA_CFG_NODE_ID=2
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-1-prod:9093,2@kafka-2-prod:9093,3@kafka-3-prod:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-2-prod:9092
+    volumes:
+      - kafka_data_2:/bitnami/kafka
+
+  kafka-3-prod:
+    profiles: [prod]
+    build:
+      context: ./kafka-pubsub
+    restart: unless-stopped
+    environment:
+      - KAFKA_KRAFT_CLUSTER_ID=q1w2e3r4t5y6u7i8o9p0aa
+      - KAFKA_CFG_NODE_ID=3
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-1-prod:9093,2@kafka-2-prod:9093,3@kafka-3-prod:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-3-prod:9092
+    volumes:
+      - kafka_data_3:/bitnami/kafka
+
+  kafka-1-dev:
+    profiles: [dev]
+    build:
+      context: ./kafka-pubsub
+    restart: unless-stopped
+    environment:
+      - KAFKA_KRAFT_CLUSTER_ID=q1w2e3r4t5y6u7i8o9p0aa
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-1-dev:9093
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,EXTERNAL://:9094,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-1-dev:9092,EXTERNAL://localhost:9094
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_CFG_DEFAULT_REPLICATION_FACTOR=1
+      - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=1
+    ports:
+      - "9094:9094"
+    volumes:
+      - kafka_data_1:/bitnami/kafka
+
+
+  kafka-consumer-dummy-dev:
+    profiles: [dev]
+    build:
+      context: ./kafka-consumer-dummy
+    restart: unless-stopped
+    environment:
+      - TOPIC=capstone-logi
+      - GROUP_ID=dummy-consumer
+      - BOOTSTRAP=kafka-1-dev:9092
+    depends_on:
+      - kafka-1-dev
 
   pyspark-streamproc:
+    profiles: [un-implemented] # TODO: When implemented, delete this line
     build:
       context: ./pyspark-streamproc
       dockerfile: Dockerfile
     restart: unless-stopped
 
   faiss-simsearch:
+    profiles: [un-implemented] # TODO: When implemented, delete this line
     build:
       context: ./faiss-simsearch
       dockerfile: Dockerfile
     restart: unless-stopped
 
   cassandra-logdb:
+    profiles: [un-implemented] # TODO: When implemented, delete this line
     build:
       context: ./cassandra-logdb
       dockerfile: Dockerfile
     restart: unless-stopped
 
   ml:
+    profiles: [un-implemented] # TODO: When implemented, delete this line
     build:
       context: ./ml
       dockerfile: Dockerfile
     restart: unless-stopped
 
   teacher-backend:
+    profiles: [un-implemented] # TODO: When implemented, delete this line
     build:
       context: ./teacher-backend
       dockerfile: Dockerfile
     restart: unless-stopped
 
   teacher-frontend:
+    profiles: [un-implemented] # TODO: When implemented, delete this line
     build:
       context: ./teacher-frontend
       dockerfile: Dockerfile
@@ -140,6 +218,9 @@ services:
 volumes:
   postgres_data:
   ollama_data:
+  kafka_data_1:
+  kafka_data_2:
+  kafka_data_3:
 
 networks:
   default: {}

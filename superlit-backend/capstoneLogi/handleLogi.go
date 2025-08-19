@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/twmb/franz-go/pkg/kgo"
@@ -32,10 +33,17 @@ var kafkaClient *kgo.Client
 var kafkaCtx context.Context
 
 func InitProducer() error {
-	seeds := []string{"host.docker.internal:9092"}
+	brokersEnv := os.Getenv("KAFKA_BROKERS")
+	var seeds []string
+	if brokersEnv == "" {
+		seeds = []string{"kafka-pubsub:9092"}
+	} else {
+		seeds = strings.Split(brokersEnv, ",")
+	}
 	var err error
 	kafkaClient, err = kgo.NewClient(
 		kgo.SeedBrokers(seeds...),
+		kgo.AllowAutoTopicCreation(),
 		kgo.WithLogger(kgo.BasicLogger(os.Stdout, kgo.LogLevelDebug, nil)),
 	)
 	if err != nil {
@@ -68,7 +76,6 @@ func HandleLogi(c *gin.Context) {
 	filename := request.Logs[0].UserID // assuming this batch of logs comes from a single user
 
 	f, err := os.OpenFile("./capstone-logi-logs/"+filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	defer f.Close()
 	if err != nil {
 		log.Println(err)
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -76,6 +83,7 @@ func HandleLogi(c *gin.Context) {
 		})
 		return
 	}
+	defer f.Close()
 
 	for _, logLine := range request.Logs {
 		text :=
