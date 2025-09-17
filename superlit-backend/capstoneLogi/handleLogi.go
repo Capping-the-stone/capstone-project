@@ -24,6 +24,7 @@ type LogFormat struct {
 	Ts         int64  `json:"ts"`         // epoch ms
 	// Optional fields depending on type
 	Content       string `json:"content,omitempty"`
+	Code          string `json:"code,omitempty"` // present for run and submission
 	Offset        int    `json:"offset,omitempty"`
 	NumCharacters int    `json:"numCharacters,omitempty"`
 	IsPaste       bool   `json:"isPaste,omitempty"`
@@ -105,16 +106,19 @@ func HandleLogi(c *gin.Context) {
 		}
 		h.Write([]byte{"|"[0]})
 		h.Write([]byte(ev.Content))
+		h.Write([]byte{"|"[0]})
+		h.Write([]byte(ev.Code))
 		ev.EventID = hex.EncodeToString(h.Sum(nil))
 
-		// CSV columns: srn,questionID,type,ts,offset,numCharacters,isPaste,content
+		// CSV columns: srn,questionID,type,ts,offset,numCharacters,isPaste,content,code
 		tsStr := strconv.FormatInt(ev.Ts, 10)
 		offsetStr := fmt.Sprint(ev.Offset)
 		numCharsStr := fmt.Sprint(ev.NumCharacters)
 		isPasteStr := fmt.Sprint(ev.IsPaste)
 		contentQuoted := strconv.Quote(ev.Content)
+		codeQuoted := strconv.Quote(ev.Code)
 
-		line := fmt.Sprintf("%s,%d,%s,%s,%s,%s,%s,%s\n",
+		line := fmt.Sprintf("%s,%d,%s,%s,%s,%s,%s,%s,%s\n",
 			ev.SRN,
 			ev.QuestionID,
 			ev.Type,
@@ -123,6 +127,7 @@ func HandleLogi(c *gin.Context) {
 			numCharsStr,
 			isPasteStr,
 			contentQuoted,
+			codeQuoted,
 		)
 
 		_, err := f.WriteString(line)

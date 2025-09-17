@@ -241,6 +241,9 @@ services:
       - REDIS_PORT=6379
       - PYSPARK_PYTHON=/opt/venv/bin/python
       - PYSPARK_DRIVER_PYTHON=/opt/venv/bin/python
+      - ML_MODEL_URL=http://ml:8000
+      - FAISS_URL=http://faiss-simsearch:8000
+      - REQUEST_TIMEOUT_SECONDS=1.5
     volumes:
       - ./pyspark-streamproc/app:/app
       - pyspark_checkpoints:/checkpoints

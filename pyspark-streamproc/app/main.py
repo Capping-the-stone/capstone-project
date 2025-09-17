@@ -48,6 +48,7 @@ def main() -> None:
         StructField("questionID", IntegerType(), True),
         StructField("ts", LongType(), True),
         StructField("content", StringType(), True),
+        StructField("code", StringType(), True),
         StructField("offset", IntegerType(), True),
         StructField("numCharacters", IntegerType(), True),
         StructField("isPaste", BooleanType(), True),
@@ -86,6 +87,9 @@ def main() -> None:
                 import os as _os
                 import json as _json
                 import redis as _redis
+                import logging as _logging
+                import urllib.request as _urllib_request
+                import urllib.error as _urllib_error
             except Exception:
                 return
 
@@ -112,6 +116,14 @@ def main() -> None:
                 client.ping()
             except Exception:
                 return
+
+            _logger = _logging.getLogger("capstonelogi_stream")
+            faiss_base_url = _os.getenv("FAISS_URL", "http://faiss-simsearch:8000").rstrip("/")
+            ml_model_base_url = _os.getenv("ML_MODEL_URL", "http://ml:8000").rstrip("/")
+            try:
+                request_timeout = float(_os.getenv("REQUEST_TIMEOUT_SECONDS", "1.5"))
+            except Exception:
+                request_timeout = 1.5
 
             for row in rows_iter:
                 ev = row.asDict(recursive=True)
@@ -149,14 +161,70 @@ def main() -> None:
 
                 if ev.get("isPaste"):
                     state["paste_count"] += 1
+                    url = f"{ml_model_base_url}/check-this-guy"
+                    payload = {
+                        "srn": str(srn or ""),
+                        "questionID": int(qid or 0),  # should never default to 0
+                    }
+
+                    data = _json.dumps(payload).encode("utf-8")
+                    req = _urllib_request.Request(
+                        url,
+                        data=data,
+                        headers={"Content-Type": "application/json"},
+                        method="POST",
+                    )
+                    # Do not block on body; short timeout, ignore response
+                    try:
+                        with _urllib_request.urlopen(req, timeout=request_timeout):
+                            pass
+                    except Exception as exc:
+                        try:
+                            _logger.error("ML Model POST /check-this-guy failed for key=%s: %s", key, exc)
+                        except Exception:
+                            pass
+
 
                 etype = (ev.get("type") or "").lower()
                 if etype == "delete":
-                    state["deletion_count"] += 1
+                    num_chars = ev.get("numCharacters", 1)
+                    if isinstance(num_chars, int) and num_chars > 0: # this is in case numCharacters is not integer
+                        state["deletion_count"] += num_chars
+                    else:
+                        state["deletion_count"] += 1
                 elif etype == "run":
                     state["compilation_count"] += 1
                 elif etype == "submission":
                     state["submission_count"] += 1
+                    # Fire-and-forget PUT to FAISS /submission
+                    try:
+                        url = f"{faiss_base_url}/submission"
+                        payload = {
+                            "userID": str(srn or ""),
+                            "questionID": str(qid or ""),
+                            "code": ev.get("code") or "",
+                        }
+                        data = _json.dumps(payload).encode("utf-8")
+                        req = _urllib_request.Request(
+                            url,
+                            data=data,
+                            headers={"Content-Type": "application/json"},
+                            method="PUT",
+                        )
+                        # Do not block on body; short timeout, ignore response
+                        try:
+                            with _urllib_request.urlopen(req, timeout=request_timeout):
+                                pass
+                        except Exception as exc:
+                            try:
+                                _logger.error("FAISS PUT /submission failed for key=%s: %s", key, exc)
+                            except Exception:
+                                pass
+                    except Exception as exc:
+                        try:
+                            _logger.error("FAISS submit request build error for key=%s: %s", key, exc)
+                        except Exception:
+                            pass
 
                 try:
                     client.set(key, _json.dumps(state, separators=(",", ":")))
@@ -181,5 +249,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

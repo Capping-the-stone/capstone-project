@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS capstone.logs_by_student_question (
   event_id text,
   type text,
   content text,
+  code text,
   offset int,
   num_characters int,
   is_paste boolean,

@@ -66,8 +66,8 @@ class CassandraConnector:
                 # Prepare the insert statement
                 insert_cql = """
                 INSERT INTO logs_by_student_question 
-                (srn, question_id, ts_ms, event_id, type, content, offset, num_characters, is_paste)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (srn, question_id, ts_ms, event_id, type, content, code, offset, num_characters, is_paste)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """
                 self.prepared_stmt = self.session.prepare(insert_cql)
                 self.prepared_stmt.consistency_level = ConsistencyLevel.ONE
@@ -99,6 +99,7 @@ class CassandraConnector:
                 event_id = record.get('eventID')  # Note: frontend uses eventID
                 record_type = record.get('type', '')
                 content = record.get('content', '')
+                code = record.get('code', '')
                 offset = record.get('offset', 0)
                 num_characters = record.get('numCharacters', 0)
                 is_paste = record.get('isPaste', False)
@@ -111,7 +112,7 @@ class CassandraConnector:
                 # Execute the prepared statement
                 self.session.execute(
                     self.prepared_stmt,
-                    (srn, question_id, ts_ms, event_id, record_type, content, offset, num_characters, is_paste)
+                    (srn, question_id, ts_ms, event_id, record_type, content, code, offset, num_characters, is_paste)
                 )
                 success_count += 1
                 

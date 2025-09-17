@@ -33,10 +33,12 @@ export interface DeleteEvent extends BaseLogEvent {
 
 export interface RunEvent extends BaseLogEvent {
   type: "run";
+  code: string; // full editor text at run time
 }
 
 export interface SubmissionEvent extends BaseLogEvent {
   type: "submission";
+  code: string; // full editor text at submission time
 }
 
 export type LogEvent =

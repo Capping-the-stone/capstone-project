@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import AlertDialogWrapper from "@/components/ui/alertDialogWrapper";
 import { addLog, flushLogs } from "../capstoneLogi";
 
-import { useRef, useState } from "react";
+import { useRef, useState, RefObject } from "react";
 import { useAuth } from "@/lib/authContext";
 import { useNavigate } from "react-router-dom";
 
@@ -38,6 +38,7 @@ export default function AssignmentTestCasePanel({
       srn: userID,
       questionID: assignmentData.questions[currentQuestionIndex].ID,
       ts: Date.now(),
+      code: editorData[currentQuestionIndex],
     });
 
     const tempOutputs: string[] = [];
@@ -150,6 +151,7 @@ export default function AssignmentTestCasePanel({
       srn: userID,
       questionID: assignmentData.questions[currentQuestionIndex].ID,
       ts: Date.now(),
+      code: editorData[currentQuestionIndex],
     });
     const payload = {
       code: editorData[currentQuestionIndex],

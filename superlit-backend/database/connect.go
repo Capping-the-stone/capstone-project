@@ -1,10 +1,11 @@
 package database
 
 import (
+	"sync"
+
 	"github.com/anuragrao04/superlit-backend/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"sync"
 )
 
 var DB *gorm.DB // other packages can access this variable
@@ -20,7 +21,12 @@ func Connect(dsn string) (*gorm.DB, error) {
 		panic("failed to connect database")
 	}
 
-	err = DB.AutoMigrate(&models.User{}, &models.Classroom{}, &models.Assignment{}, &models.AssignmentSubmission{}, &models.TestCase{}, &models.InstantTest{}, &models.Question{}, &models.InstantTestSubmission{}, &models.Answer{}, &models.ExampleTestCase{}, &models.VerifiedTestCase{})
+	// Ensure GORM uses the customized join model for Assignment.BlacklistedStudents
+	if err = DB.SetupJoinTable(&models.Assignment{}, "BlacklistedStudents", &models.AssignmentUserBlacklist{}); err != nil {
+		return DB, err
+	}
+
+	err = DB.AutoMigrate(&models.User{}, &models.Classroom{}, &models.Assignment{}, &models.AssignmentSubmission{}, &models.TestCase{}, &models.InstantTest{}, &models.Question{}, &models.InstantTestSubmission{}, &models.Answer{}, &models.ExampleTestCase{}, &models.VerifiedTestCase{}, &models.AssignmentUserBlacklist{})
 
 	return DB, err
 }

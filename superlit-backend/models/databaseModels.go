@@ -42,7 +42,7 @@ type Assignment struct {
 	MaxWindowChangeAttempts int                    `json:"maxWindowChangeAttempts"`
 	Classrooms              []Classroom            `gorm:"many2many:assignment_classroom;" json:"classrooms"`
 	Questions               []Question             `gorm:"polymorphic:Parent;" json:"questions"`
-	BlacklistedStudents     []User                 `gorm:"many2many:assignment_user_blacklist;" json:"blacklistedStudents"` // students who've been caught cheating
+	BlacklistedStudents     []User                 `gorm:"many2many:assignment_user_blacklists;" json:"blacklistedStudents"` // students who've been caught cheating
 	Submissions             []AssignmentSubmission `gorm:"foreignKey:AssignmentID" json:"submissions"`
 	// this is the classrooms in which the assignment is assigned.
 	// Since every classroom can have multiple assignments, and one assignment may be assigned to multiple classrooms, we have a many to many relationship
@@ -131,4 +131,13 @@ type VerifiedTestCase struct {
 	Input          string `json:"input"`
 	ExpectedOutput string `json:"expectedOutput"`
 	ProducedOutput string `json:"producedOutput"`
+}
+
+// AssignmentUserBlacklist is the customized join table between Assignment and User for blacklist relations.
+// It uses composite primary key (AssignmentID, UserID) and supports soft delete and timestamps.
+type AssignmentUserBlacklist struct {
+	AssignmentID uint `gorm:"primaryKey"`
+	UserID       uint `gorm:"primaryKey"`
+	CreatedAt    time.Time
+	DeletedAt    gorm.DeletedAt
 }
