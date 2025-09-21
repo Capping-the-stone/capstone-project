@@ -256,10 +256,10 @@ services:
 
   redis-dev:
     profiles: [dev]
-    image: redis:7.2-alpine
+    image: bitnami/redis:7.2.5
     restart: unless-stopped
     environment:
-      - REDIS_ARGS=--appendonly yes
+      - ALLOW_EMPTY_PASSWORD=yes
     ports:
       - "6379:6379"
 
@@ -489,23 +489,13 @@ services:
     restart: unless-stopped
     depends_on:
       - redis-dev
-      - ml-mock-dev
     environment:
       - REDIS_HOST=redis-dev
       - REDIS_PORT=6379
-      - ML_API_URL=http://ml-mock-dev:8002/predict
       - BACKEND_URL=http://superlit-backend-dev:6969
     ports:
       - "8001:8001"
 
-  ml-mock-dev:
-    profiles: [dev]
-    build:
-      context: ./ml-model/mock-infer
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    ports:
-      - "8002:8002"
 
   teacher-backend:
     profiles: [un-implemented] # TODO: When implemented, delete this line
