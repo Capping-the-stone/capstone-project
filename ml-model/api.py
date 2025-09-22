@@ -1,130 +1,162 @@
-import os
-import json
-import logging
-from typing import Optional
+#!/usr/bin/env python3
+"""
+Simple API for ML Cheating Detection
+POST /check-this-guy - Check specific student and question
+"""
 
-import requests
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+import json
+import redis
+import os
+import logging
 
-
+# Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-
-class CheckPayload(BaseModel):
+class CheckStudentPayload(BaseModel):
     srn: str
     questionID: int
 
-
-def _get_redis_client():
-    try:
-        import redis
-    except Exception as exc:
-        raise RuntimeError("redis package not installed") from exc
-
-    cluster_nodes = os.getenv("REDIS_CLUSTER_NODES", "").strip()
-    if cluster_nodes:
-        startup_nodes = []
-        for node in cluster_nodes.split():
-            host, _, port = node.partition(":")
-            startup_nodes.append({"host": host, "port": int(port or 6379)})
-        return redis.cluster.RedisCluster(startup_nodes=startup_nodes, decode_responses=True)
-    host = os.getenv("REDIS_HOST", "redis-dev")
-    port = int(os.getenv("REDIS_PORT", "6379"))
-    return redis.Redis(host=host, port=port, decode_responses=True)
-
-
-def _fetch_state_from_redis(srn: str, question_id: int) -> Optional[dict]:
-    client = _get_redis_client()
-    try:
-        client.ping()
-    except Exception as exc:
-        logger.error("Redis not reachable: %s", exc)
-        raise HTTPException(status_code=500, detail="Redis not reachable")
-
-    key = f"{srn}|{question_id}"
-    try:
-        raw = client.get(key)
-    except Exception as exc:
-        logger.error("Redis GET failed: %s", exc)
-        raise HTTPException(status_code=500, detail="Redis error")
-
-    if not raw:
-        return None
-    try:
-        return json.loads(raw)
-    except Exception:
-        return None
-
-
-def _call_ml_api(srn: str, question_id: int, state: dict) -> dict:
-    api_url = os.getenv("ML_API_URL")
-    if not api_url:
-        raise HTTPException(status_code=500, detail="ML_API_URL not configured")
-
-    payload = {
-        "instances": [
-            {
+class RedisMLChecker:
+    def __init__(self):
+        """Initialize Redis connection and ML model"""
+        self.redis_client = self._connect_redis()
+        self.ml_detector = self._load_ml_model()
+    
+    def _connect_redis(self):
+        """Connect to Redis"""
+        try:
+            redis_host = os.getenv("REDIS_HOST", "redis-dev")
+            redis_port = int(os.getenv("REDIS_PORT", "6379"))
+            # TODO: this will work in dev more. In prod, you'd have multiple redis hosts in the cluster.
+            
+            client = redis.Redis(host=redis_host, port=redis_port, decode_responses=True)
+            client.ping()
+            logger.info(f"Connected to Redis at {redis_host}:{redis_port}")
+            return client
+        except Exception as e:
+            logger.error(f"Redis connection failed: {e}")
+            return None
+    
+    def _load_ml_model(self):
+        """Load the latest ML model"""
+        try:
+            from cheating_detector_with_persistence import CheatingDetector
+            detector = CheatingDetector()
+            models = detector.list_saved_models()
+            if not models:
+                raise ValueError("No saved models found")
+            
+            latest_model = models[-1]
+            detector.load_model(latest_model)
+            logger.info(f"Loaded ML model: {latest_model}")
+            return detector
+        except Exception as e:
+            logger.error(f"Failed to load ML model: {e}")
+            return None
+    
+    def check_student(self, srn, question_id):
+        """Check if a student is cheating for a specific question"""
+        try:
+            # Create Redis key
+            redis_key = f"{srn}|{question_id}"
+            
+            # Get data from Redis
+            if not self.redis_client:
+                return {"error": "Redis not connected"}
+            
+            raw_data = self.redis_client.get(redis_key)
+            if not raw_data:
+                return {"error": f"No data found for {srn} on question {question_id}"}
+            
+            # Parse Redis data
+            student_data = json.loads(raw_data)
+            # TODO: add a fail safe in case JSON parsing fails here
+            
+            # Convert to DataFrame format for ML model
+            import pandas as pd
+            features_df = pd.DataFrame([{
+                "SRN": srn,
+                "total_actions": student_data.get("total_actions", 0),
+                "total_time_ms": student_data.get("latest_log_ts", 0),
+                "avg_time_per_action_ms": student_data.get("latest_log_ts", 0) / max(student_data.get("total_actions", 1), 1),
+                "paste_count": student_data.get("paste_count", 0),
+                "deletion_count": student_data.get("deletion_count", 0),
+                "compilation_count": student_data.get("compilation_count", 0),
+                "submission_count": student_data.get("submission_count", 0)
+            }])
+            
+            # Use ML model to predict
+            if not self.ml_detector:
+                return {"error": "ML model not loaded"}
+            # TODO: This guard clause should be moved before we attempt to get data from redis.
+            
+            result_df = self.ml_detector.predict(features_df)
+            result = result_df.iloc[0]
+            
+            # Return result
+            return {
+                "detectionMethod": "ML",
                 "srn": srn,
                 "questionID": question_id,
+                "is_suspected_cheating": bool(result["is_suspected_cheating"]),
+                "anomaly_score": int(result["anomaly_score"]),
                 "features": {
-                    "total_actions": int(state.get("total_actions", 0) or 0),
-                    "paste_count": int(state.get("paste_count", 0) or 0),
-                    "deletion_count": int(state.get("deletion_count", 0) or 0),
-                    "compilation_count": int(state.get("compilation_count", 0) or 0),
-                    "submission_count": int(state.get("submission_count", 0) or 0),
-                    "latest_log_ts": int(state.get("latest_log_ts", 0) or 0),
-                },
+                    "total_actions": int(student_data.get("total_actions", 0)),
+                    "paste_count": int(student_data.get("paste_count", 0)),
+                    "deletion_count": int(student_data.get("deletion_count", 0)),
+                    "compilation_count": int(student_data.get("compilation_count", 0)),
+                    "submission_count": int(student_data.get("submission_count", 0))
+                }
             }
-        ]
-    }
-    try:
-        resp = requests.post(api_url, json=payload, timeout=20)
-        resp.raise_for_status()
-        data = resp.json() or {}
-    except Exception as exc:
-        logger.error("ML API call failed: %s", exc)
-        raise HTTPException(status_code=502, detail="ML API failure")
+            
+        except Exception as e:
+            logger.error(f"Error checking student {srn}: {e}")
+            return {"error": str(e)}
 
-    preds = data.get("predictions", [])
-    return preds[0] if preds else {}
-
-
-def _notify_backend_cheating(srn: str, question_id: int) -> None:
-    # backend_url = os.getenv("BACKEND_URL")
-    # if not backend_url:
-    #     logger.warning("BACKEND_URL not set; skipping backend notify")
-    #     return
-    # url = backend_url.rstrip("/") + "/this-guy-is-cheating"
-    body = {"detectionMethod": "ML", "srn": srn, "questionID": question_id}
-    # try:
-    #     resp = requests.post(url, json=body, timeout=10)
-    #     resp.raise_for_status()
-    # except Exception as exc:
-    #     logger.error("Backend notify failed: %s", exc)
-    print("Would notify backend:", body)
-
+# Initialize the checker
+checker = RedisMLChecker()
 
 @app.post("/check-this-guy")
-def check_this_guy(payload: CheckPayload):
-    logger.info("POST /check-this-guy srn=%s qid=%s", payload.srn, payload.questionID)
+def check_this_guy(payload: CheckStudentPayload):
+    """Check if a specific student is cheating on a specific question"""
+    logger.info(f"POST /check-this-guy - srn: {payload.srn}, questionID: {payload.questionID}")
+    
+    try:
+        # Check the student
+        result = checker.check_student(payload.srn, payload.questionID)
 
-    state = _fetch_state_from_redis(payload.srn, payload.questionID)
-    if state is None:
-        raise HTTPException(status_code=404, detail="No state for srn|questionID")
+        # TODO: this is a bad pattern. Make check_student() return a tuple of 2 values. The actual result and an 'error'. 
+        # if error is not null, then we have a problem. Golang is known for this pattern 
+        if "error" in result:
+            logger.error(f"Error checking student: {result['error']}")
+            raise HTTPException(status_code=404, detail=result["error"])
+        
+        # Print the result as requested
+        print({
+            "detectionMethod": "ML",
+            "srn": payload.srn,
+            "questionID": payload.questionID,
+        })
+        
+        logger.info(f"Student {payload.srn} checked successfully")
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"API error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-    pred = _call_ml_api(payload.srn, payload.questionID, state)
-    is_cheating = bool(pred.get("is_suspected_cheating", False))
-
-    if is_cheating:
-        _notify_backend_cheating(payload.srn, payload.questionID)
-
+@app.get("/health")
+def health():
+    """Health check endpoint"""
     return {
-        "srn": payload.srn,
-        "questionID": payload.questionID,
-        "isCheating": is_cheating,
-        "prediction": pred,
+        "status": "healthy",
+        "redis_connected": checker.redis_client is not None,
+        "ml_model_loaded": checker.ml_detector is not None
     }
