@@ -32,6 +32,7 @@ class RedisMLChecker:
         try:
             redis_host = os.getenv("REDIS_HOST", "redis-dev")
             redis_port = int(os.getenv("REDIS_PORT", "6379"))
+            # TODO: this will work in dev more. In prod, you'd have multiple redis hosts in the cluster.
             
             client = redis.Redis(host=redis_host, port=redis_port, decode_responses=True)
             client.ping()
@@ -74,6 +75,7 @@ class RedisMLChecker:
             
             # Parse Redis data
             student_data = json.loads(raw_data)
+            # TODO: add a fail safe in case JSON parsing fails here
             
             # Convert to DataFrame format for ML model
             import pandas as pd
@@ -91,6 +93,7 @@ class RedisMLChecker:
             # Use ML model to predict
             if not self.ml_detector:
                 return {"error": "ML model not loaded"}
+            # TODO: This guard clause should be moved before we attempt to get data from redis.
             
             result_df = self.ml_detector.predict(features_df)
             result = result_df.iloc[0]
@@ -126,7 +129,9 @@ def check_this_guy(payload: CheckStudentPayload):
     try:
         # Check the student
         result = checker.check_student(payload.srn, payload.questionID)
-        
+
+        # TODO: this is a bad pattern. Make check_student() return a tuple of 2 values. The actual result and an 'error'. 
+        # if error is not null, then we have a problem. Golang is known for this pattern 
         if "error" in result:
             logger.error(f"Error checking student: {result['error']}")
             raise HTTPException(status_code=404, detail=result["error"])
