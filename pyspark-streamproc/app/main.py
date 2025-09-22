@@ -119,7 +119,7 @@ def main() -> None:
 
             _logger = _logging.getLogger("capstonelogi_stream")
             faiss_base_url = _os.getenv("FAISS_URL", "http://faiss-simsearch:8000").rstrip("/")
-            ml_model_base_url = _os.getenv("ML_MODEL_URL", "http://ml:8000").rstrip("/")
+            ml_model_base_url = _os.getenv("ML_MODEL_URL", "http://ml-model-dev:8001").rstrip("/")
             try:
                 request_timeout = float(_os.getenv("REQUEST_TIMEOUT_SECONDS", "1.5"))
             except Exception:
