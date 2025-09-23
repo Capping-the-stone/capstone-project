@@ -16,6 +16,11 @@ from pyspark.sql.types import (
 def main() -> None:
     bootstrap = os.getenv("KAFKA_BOOTSTRAP", "kafka-1-dev:9092")
     topic = os.getenv("KAFKA_TOPIC", "capstonelogi")
+    logging.basicConfig(level=os.getenv("PY_LOG_LEVEL", "INFO"))
+    demo_logger = logging.getLogger("capstonelogi_stream")
+    demo_logger.info("Starting capstonelogi_stream app")
+    demo_logger.info("Kafka bootstrap: %s", bootstrap)
+    demo_logger.info("Kafka topic: %s", topic)
 
     spark = (
         SparkSession.builder
@@ -27,6 +32,7 @@ def main() -> None:
     # Reduce Spark log verbosity
     try:
         spark.sparkContext.setLogLevel("WARN")
+        demo_logger.info("Spark session created; log level set to WARN")
     except Exception:
         pass
 
@@ -40,6 +46,7 @@ def main() -> None:
         .option("failOnDataLoss", "false")
         .load()
     )
+    demo_logger.info("Kafka source ready; streaming from topic '%s'", topic)
 
     # JSON schema matching handleLogi.go and capstoneLogi.ts (eventID is optional)
     event_schema = StructType([
@@ -66,9 +73,9 @@ def main() -> None:
         )
         .select("event.*", "topic", "partition", "offset", "timestamp")
     )
+    demo_logger.info("Event schema applied; parsing fields type,srn,questionID,ts,isPaste, ...")
 
     logger = logging.getLogger("capstonelogi_stream")
-    logging.basicConfig(level=os.getenv("PY_LOG_LEVEL", "INFO"))
 
     def write_batch(batch_df, batch_id: int) -> None:
         # Basic batch diagnostics (driver only)
@@ -77,7 +84,7 @@ def main() -> None:
         except Exception as exc:
             logger.error("[batch %s] count failed: %s", batch_id, exc)
             return
-        logger.info("[batch %s] rows=%s", batch_id, count)
+        logger.info("[batch %s] starting; rows=%s", batch_id, count)
         if count == 0:
             return
 
@@ -104,6 +111,10 @@ def main() -> None:
                     client = _redis.cluster.RedisCluster(startup_nodes=startup_nodes, decode_responses=True)
                 except Exception:
                     return
+                try:
+                    _logging.getLogger("capstonelogi_stream").info("Using Redis Cluster: %s", cluster_nodes)
+                except Exception:
+                    pass
             else:
                 host = _os.getenv("REDIS_HOST", "redis-dev")
                 port = int(_os.getenv("REDIS_PORT", "6379"))
@@ -111,6 +122,10 @@ def main() -> None:
                     client = _redis.Redis(host=host, port=port, decode_responses=True)
                 except Exception:
                     return
+                try:
+                    _logging.getLogger("capstonelogi_stream").info("Using Redis (single node): %s:%s", host, port)
+                except Exception:
+                    pass
 
             try:
                 client.ping()
@@ -124,6 +139,10 @@ def main() -> None:
                 request_timeout = float(_os.getenv("REQUEST_TIMEOUT_SECONDS", "1.5"))
             except Exception:
                 request_timeout = 1.5
+            try:
+                _logger.info("External services: FAISS=%s ML=%s timeout=%.1fs", faiss_base_url, ml_model_base_url, request_timeout)
+            except Exception:
+                pass
 
             for row in rows_iter:
                 ev = row.asDict(recursive=True)
@@ -161,6 +180,10 @@ def main() -> None:
 
                 if ev.get("isPaste"):
                     state["paste_count"] += 1
+                    try:
+                        _logger.info("Paste detected for key=%s (srn=%s, qid=%s)", key, srn, qid)
+                    except Exception:
+                        pass
                     url = f"{ml_model_base_url}/check-this-guy"
                     payload = {
                         "srn": str(srn or ""),
@@ -196,6 +219,10 @@ def main() -> None:
                     state["compilation_count"] += 1
                 elif etype == "submission":
                     state["submission_count"] += 1
+                    try:
+                        _logger.info("Submission detected for key=%s; sending to FAISS", key)
+                    except Exception:
+                        pass
                     # Fire-and-forget PUT to FAISS /submission
                     try:
                         url = f"{faiss_base_url}/submission"
@@ -228,6 +255,18 @@ def main() -> None:
 
                 try:
                     client.set(key, _json.dumps(state, separators=(",", ":")))
+                    try:
+                        _logger.info(
+                            "State updated for key=%s: actions=%s paste=%s delete=%s run=%s submit=%s",
+                            key,
+                            state.get("total_actions"),
+                            state.get("paste_count"),
+                            state.get("deletion_count"),
+                            state.get("compilation_count"),
+                            state.get("submission_count"),
+                        )
+                    except Exception:
+                        pass
                 except Exception:
                     pass
 
@@ -242,6 +281,7 @@ def main() -> None:
     writer = events.writeStream.foreachBatch(write_batch)
     if checkpoint_dir:
         writer = writer.option("checkpointLocation", checkpoint_dir)
+    demo_logger.info("Starting streaming query ...")
     query = writer.start()
 
     query.awaitTermination()

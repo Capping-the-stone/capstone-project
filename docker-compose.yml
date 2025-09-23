@@ -93,6 +93,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./superlit-AI:/models
+      # TODO: Source bind mount; bake models into the image for remote/prod deploy (COPY superlit-AI/ to /models)
       - ollama_data:/root/.ollama
     environment:
       - OLLAMA_KEEP_ALIVE=24h
@@ -237,6 +238,7 @@ services:
       - KAFKA_BOOTSTRAP=kafka-1-dev:9092
       - KAFKA_TOPIC=capstonelogi
       - CHECKPOINT_DIR=/checkpoints
+      - KAFKA_STARTING_OFFSETS=earliest
       - REDIS_HOST=redis-dev
       - REDIS_PORT=6379
       - PYSPARK_PYTHON=/opt/venv/bin/python
@@ -245,8 +247,9 @@ services:
       - FAISS_URL=http://faiss-simsearch:8000
       - REQUEST_TIMEOUT_SECONDS=1.5
     volumes:
-      - ./pyspark-streamproc/app:/app
       - pyspark_checkpoints:/checkpoints
+    ports:
+      - "4040:4040"
     command: >
       bash -lc "\
       /opt/bitnami/spark/bin/spark-submit \
@@ -254,6 +257,7 @@ services:
       --conf spark.pyspark.python=/opt/venv/bin/python \
       --conf spark.pyspark.driver.python=/opt/venv/bin/python \
       --conf spark.ui.enabled=true \
+      --conf spark.ui.port=4040 \
       --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 \
       /app/main.py"
 
@@ -342,6 +346,7 @@ services:
       - PYSPARK_DRIVER_PYTHON=/opt/venv/bin/python
     volumes:
       - ./pyspark-streamproc/app:/app
+      # TODO: Source bind mount in prod; copy app into image and remove this bind for remote deploy
       - pyspark_checkpoints_prod:/checkpoints
     command: >
       bash -lc "install -d -o 1001 -g 1001 /checkpoints/capstonelogi && \
@@ -422,14 +427,14 @@ services:
 
   cassandra-init-dev:
     profiles: [dev]
-    image: cassandra:4.1
+    build:
+      context: ./cassandra-init/
+      dockerfile: Dockerfile
     restart: "no"
     depends_on:
       - cassandra-dev
     entrypoint: ["/bin/bash", "-lc"]
     command: /schema/init-dev.sh
-    volumes:
-      - ./cassandra-logdb/init-scripts:/schema:ro
 
   cassandra-1-prod:
     profiles: [prod]
@@ -471,17 +476,16 @@ services:
       - cassandra_data_3:/var/lib/cassandra
 
   cassandra-init-prod:
-    profiles: [prod]
-    image: cassandra:4.1
+    profiles: [dev]
+    build:
+      context: ./cassandra-init/
+      dockerfile: Dockerfile
     restart: "no"
     depends_on:
-      - cassandra-1-prod
-      - cassandra-2-prod
-      - cassandra-3-prod
+      - cassandra-dev
     entrypoint: ["/bin/bash", "-lc"]
     command: /schema/init-prod.sh
-    volumes:
-      - ./cassandra-logdb/init-scripts:/schema:ro
+      # TODO: Source bind mount in prod; use cassandra-init image with scripts copied at build time and drop this volume
 
 
   ml-model-dev:

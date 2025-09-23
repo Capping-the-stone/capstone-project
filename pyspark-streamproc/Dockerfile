@@ -21,8 +21,7 @@ ENV PYSPARK_DRIVER_PYTHON=/opt/venv/bin/python
 
 WORKDIR /app
 
-# The application code will be mounted via docker-compose for dev
-# COPY app/ /app/
+COPY app/ /app/
 
 # Switch back to the non-root spark user per Bitnami recommendations
 USER 1001
