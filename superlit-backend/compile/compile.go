@@ -42,7 +42,9 @@ func RunCode(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"output": output})
+	// Compute error count from the output once, right before sending the response.
+	errorCount := countErrors(output)
+	c.JSON(http.StatusOK, gin.H{"output": output, "errorCount": errorCount})
 }
 
 // This function takes code, input and language => spits out the output string and error if any.
@@ -247,4 +249,18 @@ func RunBinary(input string, command ...string) string {
 		return err.Error()
 	}
 	return string(output)
+}
+
+// countErrors counts the number of lines containing the substring "error"
+// (case-insensitive) in the provided string. It is intentionally simple and
+// is called exactly once in RunCode before forming the JSON response.
+func countErrors(s string) int {
+    lines := strings.Split(s, "\n")
+    count := 0
+    for _, ln := range lines {
+        if strings.Contains(strings.ToLower(ln), "error") {
+            count++
+        }
+    }
+    return count
 }
