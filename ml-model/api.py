@@ -82,8 +82,8 @@ class RedisMLChecker:
             features_df = pd.DataFrame([{
                 "SRN": srn,
                 "total_actions": student_data.get("total_actions", 0),
-                "total_time_ms": student_data.get("latest_log_ts", 0),
-                "avg_time_per_action_ms": student_data.get("latest_log_ts", 0) / max(student_data.get("total_actions", 1), 1),
+                "total_time_ms": student_data.get("latest_log_ts", 0) - student_data.get("earliest_log_ts", 0),
+                "avg_time_per_action_ms": (student_data.get("latest_log_ts", 0) - student_data.get("earliest_log_ts", 0)) / max(student_data.get("total_actions", 1), 1),
                 "paste_count": student_data.get("paste_count", 0),
                 "deletion_count": student_data.get("deletion_count", 0),
                 "compilation_count": student_data.get("compilation_count", 0),

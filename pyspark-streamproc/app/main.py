@@ -167,6 +167,7 @@ def main() -> None:
 
                 state.setdefault("total_actions", 0)
                 state.setdefault("latest_log_ts", 0)
+                state.setdefault("earliest_log_ts", 0)
                 state.setdefault("paste_count", 0)
                 state.setdefault("deletion_count", 0)
                 state.setdefault("compilation_count", 0)
@@ -177,6 +178,17 @@ def main() -> None:
                 ts = ev.get("ts") or 0
                 if isinstance(ts, (int, float)) and ts > (state.get("latest_log_ts") or 0):
                     state["latest_log_ts"] = int(ts)
+
+                # Update earliest timestamp: set on first valid ts or when a smaller ts arrives
+                if (
+                    isinstance(ts, (int, float))
+                    and ts > 0
+                    and (
+                        (state.get("earliest_log_ts") in (0, None))
+                        or ts < (state.get("earliest_log_ts") or 0)
+                    )
+                ):
+                    state["earliest_log_ts"] = int(ts)
 
                 if ev.get("isPaste"):
                     state["paste_count"] += 1
