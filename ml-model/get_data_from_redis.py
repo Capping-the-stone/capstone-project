@@ -153,6 +153,17 @@ class RedisDataRetriever:
         # Calculate derived features
         total_time_ms = latest_timestamp if latest_timestamp > 0 else 0
         avg_time_per_action_ms = total_time_ms / total_actions if total_actions > 0 else 0
+
+        # Fetch RJI score from Redis
+        rji_score =0.9
+        try:
+            rji_value = self.client.get(f"rji:{srn}")
+            if rji_value is not None:
+                rji_score = float(rji_value)
+            else:
+                logger.warning(f"RJI score not found for SRN: {srn}. Defaulting to 0.")
+        except Exception as e:
+            logger.error(f"Error fetching RJI for SRN {srn}: {e}")
         
         return {
             "SRN": srn,
@@ -163,7 +174,8 @@ class RedisDataRetriever:
             "deletion_count": total_deletion_count,
             "compilation_count": total_compilation_count,
             "submission_count": total_submission_count,
-            "question_count": question_count
+            "question_count": question_count,
+            "rji": rji_score
         }
     
     def get_features_dataframe(self) -> pd.DataFrame:
