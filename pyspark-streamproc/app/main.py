@@ -10,6 +10,7 @@ from pyspark.sql.types import (
     IntegerType,
     LongType,
     BooleanType,
+    DoubleType,
 )
 
 
@@ -60,6 +61,8 @@ def main() -> None:
         StructField("numCharacters", IntegerType(), True),
         StructField("isPaste", BooleanType(), True),
         StructField("eventID", StringType(), True),
+        # Synthetic RJI event fields (optional)
+        StructField("rji", DoubleType(), True),
     ])
 
     # Parse JSON payload into typed columns and include basic metadata
@@ -172,6 +175,8 @@ def main() -> None:
                 state.setdefault("deletion_count", 0)
                 state.setdefault("compilation_count", 0)
                 state.setdefault("submission_count", 0)
+                state.setdefault("rji", 0.0)
+                state.setdefault("rji_last_update", 0)
 
                 state["total_actions"] += 1
 
@@ -266,6 +271,15 @@ def main() -> None:
                             pass
 
                 try:
+                    # Compare-and-swap for RJI updates: only update if incoming ts is newer
+                    if etype == "update-rji":
+                        incoming_rji = ev.get("rji")
+                        if isinstance(incoming_rji, (int, float)) and isinstance(ts, (int, float)):
+                            last = state.get("rji_last_update") or 0
+                            if int(ts) >= int(last):
+                                state["rji"] = float(incoming_rji)
+                                state["rji_last_update"] = int(ts)
+
                     client.set(key, _json.dumps(state, separators=(",", ":")))
                     try:
                         _logger.info(
@@ -283,7 +297,7 @@ def main() -> None:
                     pass
 
         (batch_df
-            .select("srn", "questionID", "ts", "isPaste", "type")
+            .select("srn", "questionID", "ts", "isPaste", "type", "rji")
             .rdd
             .foreachPartition(process_partition)
         )

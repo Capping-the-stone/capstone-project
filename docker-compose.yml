@@ -263,7 +263,7 @@ services:
 
   redis-dev:
     profiles: [dev]
-    image: bitnami/redis:7.2.5
+    image: bitnami/redis:latest
     restart: unless-stopped
     environment:
       - ALLOW_EMPTY_PASSWORD=yes

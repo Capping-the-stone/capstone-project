@@ -134,7 +134,7 @@ type VerifiedTestCase struct {
 }
 
 // AssignmentUserBlacklist is the customized join table between Assignment and User for blacklist relations.
-// It uses composite primary key (AssignmentID, UserID) and supports soft delete and timestamps.
+// It uses composite primary key (AssignmentID, UserID)
 type AssignmentUserBlacklist struct {
 	AssignmentID uint `gorm:"primaryKey"`
 	UserID       uint `gorm:"primaryKey"`

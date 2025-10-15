@@ -28,6 +28,14 @@ type LogFormat struct {
 	Offset        int    `json:"offset,omitempty"`
 	NumCharacters int    `json:"numCharacters,omitempty"`
 	IsPaste       bool   `json:"isPaste,omitempty"`
+	// Fields specific to update-rji synthetic events
+	RJI       float64 `json:"rji,omitempty"`
+	Mu        float64 `json:"mu,omitempty"`
+	RMSSD     float64 `json:"rmssd,omitempty"`
+	BinSizeMs int     `json:"binSizeMs,omitempty"`
+	StartTs   int64   `json:"startTs,omitempty"`
+	EndTs     int64   `json:"endTs,omitempty"`
+	Bins      int     `json:"bins,omitempty"`
 	// Server-added deterministic identifier for idempotency in downstream sinks (e.g., Cassandra)
 	EventID string `json:"eventID,omitempty"`
 }
@@ -108,6 +116,21 @@ func HandleLogi(c *gin.Context) {
 		h.Write([]byte(ev.Content))
 		h.Write([]byte{"|"[0]})
 		h.Write([]byte(ev.Code))
+		// Include update-rji fields in the deterministic hash as well (zeros for non-RJI types)
+		h.Write([]byte{'|'})
+		h.Write([]byte(strconv.FormatFloat(ev.RJI, 'g', -1, 64)))
+		h.Write([]byte{'|'})
+		h.Write([]byte(strconv.FormatFloat(ev.Mu, 'g', -1, 64)))
+		h.Write([]byte{'|'})
+		h.Write([]byte(strconv.FormatFloat(ev.RMSSD, 'g', -1, 64)))
+		h.Write([]byte{'|'})
+		h.Write([]byte(strconv.Itoa(ev.BinSizeMs)))
+		h.Write([]byte{'|'})
+		h.Write([]byte(strconv.FormatInt(ev.StartTs, 10)))
+		h.Write([]byte{'|'})
+		h.Write([]byte(strconv.FormatInt(ev.EndTs, 10)))
+		h.Write([]byte{'|'})
+		h.Write([]byte(strconv.Itoa(ev.Bins)))
 		ev.EventID = hex.EncodeToString(h.Sum(nil))
 
 		// CSV columns: srn,questionID,type,ts,offset,numCharacters,isPaste,content,code
