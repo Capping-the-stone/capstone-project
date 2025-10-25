@@ -195,53 +195,36 @@ def main() -> None:
                 ):
                     state["earliest_log_ts"] = int(ts)
 
+                # Initialize trigger flags and reasons
+                trigger_ml = False
+                trigger_reasons = []
+
+                # Check paste condition
                 if ev.get("isPaste"):
                     state["paste_count"] += 1
                     try:
                         _logger.info("Paste detected for key=%s (srn=%s, qid=%s)", key, srn, qid)
                     except Exception:
                         pass
-                    url = f"{ml_model_base_url}/check-this-guy"
-                    payload = {
-                        "srn": str(srn or ""),
-                        "questionID": int(qid or 0),  # should never default to 0
-                    }
-
-                    data = _json.dumps(payload).encode("utf-8")
-                    req = _urllib_request.Request(
-                        url,
-                        data=data,
-                        headers={"Content-Type": "application/json"},
-                        method="POST",
-                    )
-                    # Do not block on body; short timeout, ignore response
-                    try:
-                        with _urllib_request.urlopen(req, timeout=request_timeout):
-                            pass
-                    except Exception as exc:
-                        try:
-                            _logger.error("ML Model POST /check-this-guy failed for key=%s: %s", key, exc)
-                        except Exception:
-                            pass
-
+                    trigger_ml = True
+                    trigger_reasons.append("paste")
 
                 etype = (ev.get("type") or "").lower()
-                if etype == "delete":
-                    num_chars = ev.get("numCharacters", 1)
-                    if isinstance(num_chars, int) and num_chars > 0: # this is in case numCharacters is not integer
-                        state["deletion_count"] += num_chars
-                    else:
-                        state["deletion_count"] += 1
-                elif etype == "run":
-                    state["compilation_count"] += 1
-                elif etype == "submission":
+                
+                # Check submission conditions
+                if etype == "submission":
                     state["submission_count"] += 1
+                    trigger_ml = True
+                    trigger_reasons.append("submission")
+                    
+                    # Early submit check (within 5 minutes of first log)
+                    if state.get("earliest_log_ts", 0) > 0 and ts - state["earliest_log_ts"] < 300000:  # 5 minutes in ms
+                        trigger_ml = True
+                        trigger_reasons.append("early_submit")
+                    
+                    # FAISS submission
                     try:
                         _logger.info("Submission detected for key=%s; sending to FAISS", key)
-                    except Exception:
-                        pass
-                    # Fire-and-forget PUT to FAISS /submission
-                    try:
                         url = f"{faiss_base_url}/submission"
                         payload = {
                             "userID": str(srn or ""),
@@ -269,30 +252,68 @@ def main() -> None:
                             _logger.error("FAISS submit request build error for key=%s: %s", key, exc)
                         except Exception:
                             pass
-
-                try:
-                    # Compare-and-swap for RJI updates: only update if incoming ts is newer
-                    if etype == "update-rji":
-                        incoming_rji = ev.get("rji")
-                        if isinstance(incoming_rji, (int, float)) and isinstance(ts, (int, float)):
-                            last = state.get("rji_last_update") or 0
-                            if int(ts) >= int(last):
-                                state["rji"] = float(incoming_rji)
-                                state["rji_last_update"] = int(ts)
-
-                    client.set(key, _json.dumps(state, separators=(",", ":")))
+                
+                # Handle other event types
+                elif etype == "delete":
+                    num_chars = ev.get("numCharacters", 1)
+                    if isinstance(num_chars, int) and num_chars > 0:  # this is in case numCharacters is not integer
+                        state["deletion_count"] += num_chars
+                    else:
+                        state["deletion_count"] += 1
+                elif etype == "run":
+                    state["compilation_count"] += 1
+                
+                # Check RJI condition (only on update-rji events)
+                if etype == "update-rji":
+                    incoming_rji = ev.get("rji")
+                    if isinstance(incoming_rji, (int, float)) and isinstance(ts, (int, float)):
+                        last = state.get("rji_last_update") or 0
+                        if int(ts) >= int(last):
+                            state["rji"] = float(incoming_rji)
+                            state["rji_last_update"] = int(ts)
+                            
+                            # Check if RJI is below threshold
+                            if state["rji"] < 0.75:
+                                trigger_ml = True
+                                trigger_reasons.append(f"low_rji_{state['rji']:.2f}")
+                
+                # Trigger ML check if any condition was met
+                if trigger_ml:
                     try:
-                        _logger.info(
-                            "State updated for key=%s: actions=%s paste=%s delete=%s run=%s submit=%s",
-                            key,
-                            state.get("total_actions"),
-                            state.get("paste_count"),
-                            state.get("deletion_count"),
-                            state.get("compilation_count"),
-                            state.get("submission_count"),
+                        url = f"{ml_model_base_url}/check-this-guy"
+                        payload = {
+                            "srn": str(srn or ""),
+                            "questionID": int(qid or 0),  # should never default to 0
+                        }
+                        data = _json.dumps(payload).encode("utf-8")
+                        req = _urllib_request.Request(
+                            url,
+                            data=data,
+                            headers={"Content-Type": "application/json"},
+                            method="POST",
                         )
-                    except Exception:
-                        pass
+                        # Do not block on body; short timeout, ignore response
+                        try:
+                            with _urllib_request.urlopen(req, timeout=request_timeout):
+                                pass
+                            _logger.info("ML check triggered for %s: %s", key, ", ".join(trigger_reasons))
+                        except Exception as exc:
+                            _logger.error("ML Model POST /check-this-guy failed for key=%s: %s", key, exc)
+                    except Exception as exc:
+                        _logger.error("ML check request build error for key=%s: %s", key, exc)
+
+                # Update state in Redis
+                try:
+                    client.set(key, _json.dumps(state, separators=(",", ":")))
+                    _logger.info(
+                        "State updated for key=%s: actions=%s paste=%s delete=%s run=%s submit=%s",
+                        key,
+                        state.get("total_actions"),
+                        state.get("paste_count"),
+                        state.get("deletion_count"),
+                        state.get("compilation_count"),
+                        state.get("submission_count"),
+                    )
                 except Exception:
                     pass
 
