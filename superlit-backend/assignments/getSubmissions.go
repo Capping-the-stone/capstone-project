@@ -145,7 +145,6 @@ func GetAssignmentSubmissions(c *gin.Context) {
 	// access to this assignment. We must figure out a way to do this
 	// we only check that the user is a teacher
 
-	// now we fetch all the submissions from the instant test with the given assigmment ID
 	submissions, questionIDs, err := database.GetAssignmentSubmissions(getSubmissionsRequest.AssignmentID)
 	if err != nil {
 		if err.Error() == "No Such Assignment" {

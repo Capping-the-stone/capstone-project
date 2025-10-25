@@ -135,6 +135,13 @@ type ExcuseStudentFromBlacklistRequest struct {
 	StudentID    uint `json:"studentID"`
 }
 
+type ReportCheaterRequest struct {
+	QuestionID      uint   `json:"questionID"`
+	UniversityID    string `json:"universityID"`
+	Reason          string `json:"reason"`
+	DetectionMethod string `json:"detectionMethod"`
+}
+
 // AI Stuff
 type AIVerifyConstraintsInstantTestRequest struct {
 	PrivateCode string `json:"privateCode"`

@@ -10,6 +10,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// legacy function. The new one is ReportCheater()
 func AddStudentToBlackList(c *gin.Context) {
 	var request models.AddStudentToBlacklistRequest
 
@@ -28,13 +29,42 @@ func AddStudentToBlackList(c *gin.Context) {
 		return
 	}
 
-	err := database.AddStudentToAssignmentBlacklist(userID, request.AssignmentID)
+	err := database.AddStudentToAssignmentBlacklist(userID, request.AssignmentID, "Tried to switch windows more than permitted limits", "System")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong in inserting into the database"})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Student added to blacklist"})
+}
+
+func ReportCheater(c *gin.Context) {
+	var request models.ReportCheaterRequest
+
+	if err := c.BindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Request"})
+		return
+	}
+
+	user, err := database.GetUserByUniversityID(request.UniversityID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	assignment, err := database.GetAssignmentFromQuestionID(request.QuestionID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Assignment not found for the given question"})
+		return
+	}
+
+	err = database.AddStudentToAssignmentBlacklist(user.ID, assignment.ID, request.Reason, request.DetectionMethod)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to report cheater"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Cheater reported successfully"})
 }
 
 func ExcuseStudentFromBlacklist(c *gin.Context) {

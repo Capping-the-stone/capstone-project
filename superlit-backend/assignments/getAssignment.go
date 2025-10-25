@@ -69,8 +69,8 @@ func GetAssignment(c *gin.Context) {
 
 	// now we see that our user does not belong to the blacklist
 	userBelongsToBlacklist := false
-	for _, user := range assignment.BlacklistedStudents {
-		if user.ID == userID {
+	for _, entry := range assignment.BlacklistEntries {
+		if entry.UserID == userID {
 			userBelongsToBlacklist = true
 			break
 		}

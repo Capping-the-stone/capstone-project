@@ -79,10 +79,16 @@ interface answerSubmission {
   studentsCode: string;
 }
 
-interface student {
+interface User {
   universityID: string;
   name: string;
   ID: number;
+}
+
+interface BlacklistedStudent {
+  user: User;
+  reason: string;
+  detectionMethod: string;
 }
 
 interface responseFormat {
@@ -93,7 +99,7 @@ interface responseFormat {
   }[];
   maxNumberOfQuestions: number;
   questionNumberArray: number[];
-  blacklistedStudents: student[];
+  blacklistedStudents: BlacklistedStudent[];
 }
 
 export default function ViewScore() {
@@ -193,10 +199,10 @@ export default function ViewScore() {
     // This is done so that the student is removed from the list without having to refetch the data
     setScores((prev) => {
       if (prev == null) return prev;
-      prev.blacklistedStudents = prev.blacklistedStudents.filter(
-        (student) => student.ID !== studentID,
+      const newBlacklisted = prev.blacklistedStudents.filter(
+        (student) => student.user.ID !== studentID,
       );
-      return prev;
+      return { ...prev, blacklistedStudents: newBlacklisted };
     });
   }
 
@@ -382,18 +388,24 @@ export default function ViewScore() {
                   <TableRow>
                     <TableHead>University ID</TableHead>
                     <TableHead>Name</TableHead>
+                    <TableHead>Reason</TableHead>
+                    <TableHead>Detection Method</TableHead>
                     <TableHead>Excuse</TableHead>
                   </TableRow>
                 </TableHeader>
 
                 <TableBody>
                   {scores?.blacklistedStudents.map(
-                    (student: student, index: number) => (
+                    (student: BlacklistedStudent, index: number) => (
                       <TableRow key={index}>
-                        <TableCell>{student.universityID}</TableCell>
-                        <TableCell>{student.name}</TableCell>
+                        <TableCell>{student.user.universityID}</TableCell>
+                        <TableCell>{student.user.name}</TableCell>
+                        <TableCell>{student.reason}</TableCell>
+                        <TableCell>{student.detectionMethod}</TableCell>
                         <TableCell>
-                          <Button onClick={() => excuseStudent(student.ID)}>
+                          <Button
+                            onClick={() => excuseStudent(student.user.ID)}
+                          >
                             Excuse
                           </Button>
                         </TableCell>

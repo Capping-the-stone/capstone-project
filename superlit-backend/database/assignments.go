@@ -33,7 +33,7 @@ func GetAssignment(assignmentID uint) (*models.Assignment, error) {
 	DBLock.Lock()
 	defer DBLock.Unlock()
 	var assignment models.Assignment
-	result := DB.Preload("Questions.ExampleCases").Preload("Classrooms.Users").Preload("BlacklistedStudents").First(&assignment, assignmentID)
+	result := DB.Preload("Questions.ExampleCases").Preload("Classrooms.Users").Preload("BlacklistEntries.User").First(&assignment, assignmentID)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -194,56 +194,41 @@ func SaveAssignment(assignment models.Assignment) error {
 	return err
 }
 
-func AddStudentToAssignmentBlacklist(userID, assignmentID uint) error {
+func AddStudentToAssignmentBlacklist(userID, assignmentID uint, reason, detectionMethod string) error {
 	DBLock.Lock()
 	defer DBLock.Unlock()
-	var user models.User
-	var assignment models.Assignment
 
-	err := DB.First(&user, userID).Error
-	if err != nil {
+	blacklistEntry := models.AssignmentUserBlacklist{
+		AssignmentID:    assignmentID,
+		UserID:          userID,
+		Reason:          reason,
+		DetectionMethod: detectionMethod,
+	}
+
+	if err := DB.Create(&blacklistEntry).Error; err != nil {
 		return err
 	}
 
-	err = DB.First(&assignment, assignmentID).Error
-	if err != nil {
-		return err
-	}
-
-	err = DB.Model(&assignment).Association("BlacklistedStudents").Append(&user)
-	return err
+	return nil
 }
 
 func ExcuseStudentFromAssignmentBlacklist(userID, assignmentID uint) error {
 	DBLock.Lock()
 	defer DBLock.Unlock()
-	var user models.User
-	var assignment models.Assignment
-
-	err := DB.First(&user, userID).Error
-	if err != nil {
-		return err
-	}
-
-	err = DB.First(&assignment, assignmentID).Error
-	if err != nil {
-		return err
-	}
-
-	err = DB.Model(&assignment).Association("BlacklistedStudents").Delete(&user)
+	err := DB.Unscoped().Where("assignment_id = ? AND user_id = ?", assignmentID, userID).Delete(&models.AssignmentUserBlacklist{}).Error
 	return err
 }
 
 // this function returns the list of students that are blacklisted from an assignment
-func GetAssignmentBlacklist(assignmentID uint) ([]models.User, error) {
+func GetAssignmentBlacklist(assignmentID uint) ([]models.AssignmentUserBlacklist, error) {
 	DBLock.Lock()
 	defer DBLock.Unlock()
-	var assignment models.Assignment
-	err := DB.Preload("BlacklistedStudents").First(&assignment, assignmentID).Error
+	var blacklistEntries []models.AssignmentUserBlacklist
+	err := DB.Preload("User").Where("assignment_id = ?", assignmentID).Find(&blacklistEntries).Error
 	if err != nil {
 		return nil, err
 	}
-	return assignment.BlacklistedStudents, nil
+	return blacklistEntries, nil
 }
 
 func SetVivaScore(assignmentID, userID, questionID uint, score int) error {
@@ -274,4 +259,34 @@ func SetVivaScore(assignmentID, userID, questionID uint, score int) error {
 
 	err = DB.Session(&gorm.Session{FullSaveAssociations: true}).Save(&submission).Error
 	return err
+}
+
+func GetUserByUniversityID(universityID string) (*models.User, error) {
+	DBLock.Lock()
+	defer DBLock.Unlock()
+	var user models.User
+	if err := DB.Where("university_id = ?", universityID).First(&user).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func GetAssignmentFromQuestionID(questionID uint) (*models.Assignment, error) {
+	DBLock.Lock()
+	defer DBLock.Unlock()
+	var question models.Question
+	if err := DB.First(&question, questionID).Error; err != nil {
+		return nil, err
+	}
+
+	if question.ParentType != "assignments" {
+		return nil, errors.New("question does not belong to an assignment")
+	}
+
+	var assignment models.Assignment
+	if err := DB.First(&assignment, question.ParentID).Error; err != nil {
+		return nil, err
+	}
+
+	return &assignment, nil
 }
