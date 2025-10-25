@@ -92,6 +92,8 @@ func CreateAssignment(c *gin.Context) {
 	}
 
 	// now we need to iterate over the classroom IDs and add this assignment to each classroom
+	// TODO: Move this classroomID exists check to before assignment is created.
+	// else we'll have unnecessary assignment and questions populating the database
 	for _, classroomID := range request.ClassroomIDs {
 		classroom, err := database.GetClassroomByID(classroomID)
 		if err != nil {
