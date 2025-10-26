@@ -157,8 +157,12 @@ func main() {
 	// obtained from the above route
 	router.POST("/assignment/saveedited", tokens.VerifyToken, assignments.SaveEditedAssignment)
 
-	// add student to blacklist in case he's caught cheating
+	// add student to blacklist in case he's caught cheating: LEGACY FUNCTION that does the same job as report_cheater
+	// this function is kept around for the traditional window switch method for detection
 	router.POST("/assignment/addstudenttoblacklist", tokens.VerifyToken, assignments.AddStudentToBlackList)
+
+	// add student to cheater list
+	router.POST("/assignment/report_cheater", assignments.ReportCheater)
 
 	// excuse student
 	router.POST("/assignment/excusestudent", tokens.VerifyToken, assignments.ExcuseStudentFromBlacklist)

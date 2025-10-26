@@ -114,7 +114,6 @@ services:
     volumes:
       - kafka_data_1:/bitnami/kafka
 
-
   kafka-2-prod:
     profiles: [prod]
     build:
@@ -141,7 +140,6 @@ services:
     volumes:
       - kafka_data_3:/bitnami/kafka
 
-
   kafka-1-dev:
     profiles: [dev]
     build:
@@ -160,8 +158,6 @@ services:
       - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=1
     volumes:
       - kafka_data_1:/bitnami/kafka
-
-
 
   kafka-consumer-dummy-dev:
     profiles: [debug] # change to dev when needed
@@ -222,8 +218,6 @@ services:
       - cassandra-init-prod
     ports:
       - "8086:8080"
-
-
 
   pyspark-streamproc:
     profiles: [dev]
@@ -398,8 +392,6 @@ services:
       - REDIS_CLUSTER_CREATOR=yes
     restart: "no"
 
-
-
   faiss-simsearch:
     profiles: [prod, dev]
     build:
@@ -484,9 +476,9 @@ services:
     depends_on:
       - cassandra-dev
     entrypoint: ["/bin/bash", "-lc"]
-    command: /schema/init-prod.sh
+    command:
+      /schema/init-prod.sh
       # TODO: Source bind mount in prod; use cassandra-init image with scripts copied at build time and drop this volume
-
 
   ml-model-dev:
     profiles: [dev]
@@ -502,21 +494,6 @@ services:
       - BACKEND_URL=http://superlit-backend-dev:6969
     ports:
       - "8001:8001"
-
-
-  teacher-backend:
-    profiles: [un-implemented] # TODO: When implemented, delete this line
-    build:
-      context: ./teacher-backend
-      dockerfile: Dockerfile
-    restart: unless-stopped
-
-  teacher-frontend:
-    profiles: [un-implemented] # TODO: When implemented, delete this line
-    build:
-      context: ./teacher-frontend
-      dockerfile: Dockerfile
-    restart: unless-stopped
 
 volumes:
   postgres_data:
