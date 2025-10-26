@@ -20,6 +20,68 @@ export default function TeacherHomePage() {
     description: "",
   });
 
+  function urlBase64ToUint8Array(base64String: string) {
+    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+    const rawData = atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  }
+
+  async function initNotifications() {
+    try {
+      if ("serviceWorker" in navigator) {
+        await navigator.serviceWorker.register("/sw.js");
+      }
+      if ("Notification" in window && Notification.permission === "default") {
+        await Notification.requestPermission();
+      }
+
+      if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+      if (Notification.permission !== "granted") return;
+
+      const registration = await navigator.serviceWorker.ready;
+
+      const existing = await registration.pushManager.getSubscription();
+      if (!existing) {
+        // Fetch VAPID key from backend with JWT
+        const keyResp = await fetch("/api/push/public-key", {
+          headers: { Authorization: token?.toString() ?? "" },
+        });
+        if (!keyResp.ok) return;
+        const { publicKey } = await keyResp.json();
+        if (!publicKey) return;
+
+        const sub = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey),
+        });
+
+        await fetch("/api/push/subscribe", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: token?.toString() ?? "",
+          },
+          body: JSON.stringify({ subscription: sub }),
+        });
+      } else {
+        // Ensure backend has latest subscription
+        await fetch("/api/push/subscribe", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: token?.toString() ?? "",
+          },
+          body: JSON.stringify({ subscription: existing }),
+        });
+      }
+    } catch (e) {}
+  }
+
   function fetchUserData() {
     fetch("/api/auth/getuser", {
       headers: {
@@ -48,6 +110,11 @@ export default function TeacherHomePage() {
       return;
     }
     fetchUserData();
+  }, []);
+
+  useEffect(() => {
+    // Initialize notifications on load; minimal but includes JWT-authenticated subscription.
+    initNotifications();
   }, []);
 
   if (userData == null)
