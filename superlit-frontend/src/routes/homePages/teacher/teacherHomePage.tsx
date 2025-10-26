@@ -20,17 +20,6 @@ export default function TeacherHomePage() {
     description: "",
   });
 
-  function urlBase64ToUint8Array(base64String: string) {
-    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-    const rawData = atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-    for (let i = 0; i < rawData.length; ++i) {
-      outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
-  }
-
   async function initNotifications() {
     try {
       if ("serviceWorker" in navigator) {
@@ -43,43 +32,33 @@ export default function TeacherHomePage() {
       if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
       if (Notification.permission !== "granted") return;
 
-      const registration = await navigator.serviceWorker.ready;
+      const sw = await navigator.serviceWorker.ready;
 
-      const existing = await registration.pushManager.getSubscription();
-      if (!existing) {
+      var subscription = await sw.pushManager.getSubscription();
+      if (!subscription) {
         // Fetch VAPID key from backend with JWT
-        const keyResp = await fetch("/api/push/public-key", {
-          headers: { Authorization: token?.toString() ?? "" },
-        });
-        if (!keyResp.ok) return;
-        const { publicKey } = await keyResp.json();
-        if (!publicKey) return;
-
-        const sub = await registration.pushManager.subscribe({
+        const publicKey = "BDe7HU2_eEGMT0rsPEwG-eNmmGwphHXvhZqBm-BuC6l5JlAf17uYUpd_Dz6vgHulqJAIJt41dIn9Y6GhK6BPETk"
+        // TODO: Get this from .env file
+    
+        subscription = await sw.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(publicKey),
-        });
-
-        await fetch("/api/push/subscribe", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: token?.toString() ?? "",
-          },
-          body: JSON.stringify({ subscription: sub }),
-        });
-      } else {
-        // Ensure backend has latest subscription
-        await fetch("/api/push/subscribe", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: token?.toString() ?? "",
-          },
-          body: JSON.stringify({ subscription: existing }),
+          applicationServerKey: publicKey,
         });
       }
-    } catch (e) {}
+      
+      // Ensure backend has latest subscription
+      await fetch("/api/notifications/subscribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token?.toString() ?? "",
+        },
+        body: JSON.stringify(subscription),
+      });
+      
+    } catch (e) {
+      console.log(e)
+    }
   }
 
   function fetchUserData() {
