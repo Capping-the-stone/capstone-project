@@ -9,13 +9,14 @@ import (
 
 type User struct {
 	gorm.Model
-	UniversityID string                 `json:"universityID"` // this may be employee ID or student ID (EMP ID and SRN in terms of PES)
-	Name         string                 `json:"name"`
-	Email        string                 `json:"email"`
-	Password     string                 `json:"password"`
-	IsTeacher    bool                   `json:"isTeacher"`
-	Classrooms   []Classroom            `gorm:"many2many:user_classroom;" json:"classrooms"`
-	Submissions  []AssignmentSubmission `json:"submissions"`
+	UniversityID        string                 `json:"universityID"` // this may be employee ID or student ID (EMP ID and SRN in terms of PES)
+	Name                string                 `json:"name"`
+	Email               string                 `json:"email"`
+	Password            string                 `json:"password"`
+	IsTeacher           bool                   `json:"isTeacher"`
+	WebPushSubscription string                 `gorm:"type:jsonb;default:NULL" json:"-"`
+	Classrooms          []Classroom            `gorm:"many2many:user_classroom;" json:"classrooms"`
+	Submissions         []AssignmentSubmission `json:"submissions"`
 	// all the submissions that this dude has made
 }
 

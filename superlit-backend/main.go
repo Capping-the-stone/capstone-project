@@ -19,6 +19,7 @@ import (
 	"github.com/anuragrao04/superlit-backend/googleSheets"
 	"github.com/anuragrao04/superlit-backend/instantTest"
 	"github.com/anuragrao04/superlit-backend/mailers"
+	"github.com/anuragrao04/superlit-backend/notifications"
 	"github.com/anuragrao04/superlit-backend/tokens"
 )
 
@@ -78,6 +79,9 @@ func main() {
 	} else {
 		log.Println("Connected to kafka")
 	}
+
+	// initialise notifications
+	notifications.Init()
 
 	// These are the routes available. No other routes apart from these will be available. All routes must be defined here.
 
@@ -191,6 +195,9 @@ func main() {
 
 	// capstone logi
 	router.POST("/capstone-logi", capstoneLogi.HandleLogi)
+
+	// notifications
+	router.POST("/notifications/subscribe", tokens.VerifyToken, notifications.Subscribe)
 
 	s := &http.Server{
 		Addr:         ":6969",

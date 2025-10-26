@@ -58,3 +58,10 @@ func GetUserByID(userID uint) (user models.User, err error) {
 	}
 	return user, err
 }
+
+func UpdateUserSubscription(userID uint, subscription string) error {
+	DBLock.Lock()
+	defer DBLock.Unlock()
+	result := DB.Model(&models.User{}).Where("id = ?", userID).Update("web_push_subscription", subscription)
+	return result.Error
+}

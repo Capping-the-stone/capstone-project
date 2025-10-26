@@ -129,3 +129,32 @@ func GetClassroomByID(classroomID uint) (*models.Classroom, error) {
 	}
 	return &classroom, nil
 }
+
+func GetTeachersForAssignment(assignmentID uint) (models.Assignment, []models.User, error) {
+	DBLock.Lock()
+	defer DBLock.Unlock()
+
+	var assignment models.Assignment
+	// Preload the classrooms, and for each classroom, preload its users.
+	err := DB.Preload("Classrooms.Users").First(&assignment, assignmentID).Error
+	if err != nil {
+		return assignment, nil, err
+	}
+
+	teacherMap := make(map[uint]models.User) // Use a map to avoid duplicate teachers
+	for _, classroom := range assignment.Classrooms {
+		for _, user := range classroom.Users {
+			if user.IsTeacher {
+				teacherMap[user.ID] = user
+			}
+		}
+	}
+
+	// Convert map to slice
+	teachers := make([]models.User, 0, len(teacherMap))
+	for _, teacher := range teacherMap {
+		teachers = append(teachers, teacher)
+	}
+
+	return assignment, teachers, nil
+}

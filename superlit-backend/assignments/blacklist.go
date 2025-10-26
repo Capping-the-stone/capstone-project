@@ -6,6 +6,7 @@ import (
 
 	"github.com/anuragrao04/superlit-backend/database"
 	"github.com/anuragrao04/superlit-backend/models"
+	"github.com/anuragrao04/superlit-backend/notifications"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -33,6 +34,14 @@ func AddStudentToBlackList(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong in inserting into the database"})
 		return
+	}
+
+	// Send notification to teachers
+	user, err := database.GetUserByID(userID)
+	if err != nil {
+		log.Printf("Could not get user for notification: %v", err)
+	} else {
+		go notifications.SendBlacklistNotification(request.AssignmentID, user, "Tried to switch windows more than permitted limits", "System")
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Student added to blacklist"})
@@ -63,6 +72,9 @@ func ReportCheater(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to report cheater"})
 		return
 	}
+
+	// Send notification to teachers
+	go notifications.SendBlacklistNotification(assignment.ID, *user, request.Reason, request.DetectionMethod)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Cheater reported successfully"})
 }
