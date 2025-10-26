@@ -213,7 +213,8 @@ class CheatingDetector:
             "total_time_ms", 
             "avg_time_per_action_ms", 
             "paste_count", 
-            "deletion_count"
+            "deletion_count",
+            "RJI"
         ]
         
         # Create pairwise scatter plots
@@ -224,19 +225,14 @@ class CheatingDetector:
             palette={True: 'red', False: 'blue'}, 
             plot_kws={'s': 50, 'edgecolor': 'black'}
         )
-        plt.suptitle("Pairwise Scatter Plots: Suspected Cheating vs Normal Behavior", y=1.02)
-        plt.tight_layout()
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        plt.close()
-        
-        logger.info(f"Visualization saved to {save_path}")
+
 
 def main():
     """Main function to train and save the model"""
     logger.info("Starting cheating detection model training...")
     
     # Load features data
-    features_df = pd.read_csv("extracted_features.csv")
+    features_df = pd.read_csv("extracted_features_rji.csv")
     logger.info(f"Loaded {len(features_df)} student records")
     
     # Initialize detector

@@ -20,6 +20,47 @@ export default function TeacherHomePage() {
     description: "",
   });
 
+  async function initNotifications() {
+    try {
+      if ("serviceWorker" in navigator) {
+        await navigator.serviceWorker.register("/sw.js");
+      }
+      if ("Notification" in window && Notification.permission === "default") {
+        await Notification.requestPermission();
+      }
+
+      if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+      if (Notification.permission !== "granted") return;
+
+      const sw = await navigator.serviceWorker.ready;
+
+      var subscription = await sw.pushManager.getSubscription();
+      if (!subscription) {
+        // Fetch VAPID key from backend with JWT
+        const publicKey = "BDe7HU2_eEGMT0rsPEwG-eNmmGwphHXvhZqBm-BuC6l5JlAf17uYUpd_Dz6vgHulqJAIJt41dIn9Y6GhK6BPETk"
+        // TODO: Get this from .env file
+    
+        subscription = await sw.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: publicKey,
+        });
+      }
+      
+      // Ensure backend has latest subscription
+      await fetch("/api/notifications/subscribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token?.toString() ?? "",
+        },
+        body: JSON.stringify(subscription),
+      });
+      
+    } catch (e) {
+      console.log(e)
+    }
+  }
+
   function fetchUserData() {
     fetch("/api/auth/getuser", {
       headers: {
@@ -48,6 +89,11 @@ export default function TeacherHomePage() {
       return;
     }
     fetchUserData();
+  }, []);
+
+  useEffect(() => {
+    // Initialize notifications on load; minimal but includes JWT-authenticated subscription.
+    initNotifications();
   }, []);
 
   if (userData == null)
