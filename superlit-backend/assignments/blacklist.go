@@ -30,7 +30,7 @@ func AddStudentToBlackList(c *gin.Context) {
 		return
 	}
 
-	err := database.AddStudentToAssignmentBlacklist(userID, request.AssignmentID, "Tried to switch windows more than permitted limits", "System")
+	err := database.AddStudentToAssignmentBlacklist(userID, request.AssignmentID, "Tried to switch windows more than permitted limits", "System", []int{})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong in inserting into the database"})
 		return
@@ -67,7 +67,7 @@ func ReportCheater(c *gin.Context) {
 		return
 	}
 
-	err = database.AddStudentToAssignmentBlacklist(user.ID, assignment.ID, request.Reason, request.DetectionMethod)
+	err = database.AddStudentToAssignmentBlacklist(user.ID, assignment.ID, request.Reason, request.DetectionMethod, []int{int(request.QuestionID)})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to report cheater"})
 		return

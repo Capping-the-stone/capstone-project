@@ -10,6 +10,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/anuragrao04/superlit-backend/AI"
+	"github.com/anuragrao04/superlit-backend/activitylogs"
 	"github.com/anuragrao04/superlit-backend/assignments"
 	"github.com/anuragrao04/superlit-backend/auth"
 	"github.com/anuragrao04/superlit-backend/capstoneLogi"
@@ -79,6 +80,9 @@ func main() {
 	} else {
 		log.Println("Connected to kafka")
 	}
+
+	// connect to cassandra
+	activitylogs.Init()
 
 	// initialise notifications
 	notifications.Init()
@@ -160,6 +164,8 @@ func main() {
 	// The below route is used to save the edited assignment
 	// obtained from the above route
 	router.POST("/assignment/saveedited", tokens.VerifyToken, assignments.SaveEditedAssignment)
+
+	router.GET("/assignment/activity_logs", tokens.VerifyToken, activitylogs.GetActivityLogs)
 
 	// add student to blacklist in case he's caught cheating: LEGACY FUNCTION that does the same job as report_cheater
 	// this function is kept around for the traditional window switch method for detection

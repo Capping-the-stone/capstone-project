@@ -10,11 +10,18 @@ services:
       target: prod
     privileged: true
     depends_on:
-      - postgres
-      - ollama
-      - kafka-1-prod
-      - kafka-2-prod
-      - kafka-3-prod
+      postgres:
+        condition: service_started
+      ollama:
+        condition: service_started
+      kafka-1-prod:
+        condition: service_started
+      kafka-2-prod:
+        condition: service_started
+      kafka-3-prod:
+        condition: service_started
+      cassandra-init-prod:
+        condition: service_completed_successfully
     environment:
       - KAFKA_BROKERS=kafka-1-prod:9092,kafka-2-prod:9092,kafka-3-prod:9092
 
@@ -44,8 +51,12 @@ services:
     ports:
       - "6969:6969"
     depends_on:
-      - postgres
-      - kafka-1-dev
+      postgres:
+        condition: service_started
+      kafka-1-dev:
+        condition: service_started
+      cassandra-init-dev:
+        condition: service_completed_successfully
     environment:
       - KAFKA_BROKERS=kafka-1-dev:9092
     develop:

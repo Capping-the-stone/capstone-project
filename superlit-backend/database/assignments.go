@@ -7,9 +7,8 @@ import (
 	"log"
 
 	"github.com/anuragrao04/superlit-backend/models"
-	// "github.com/anuragrao04/superlit-backend/prettyPrint"
+	"github.com/lib/pq"
 	"gorm.io/gorm"
-	// "github.com/anuragrao04/superlit-backend/prettyPrint"
 )
 
 func AddAssignmentToClassroom(assignment *models.Assignment, classroom *models.Classroom) error {
@@ -194,15 +193,47 @@ func SaveAssignment(assignment models.Assignment) error {
 	return err
 }
 
-func AddStudentToAssignmentBlacklist(userID, assignmentID uint, reason, detectionMethod string) error {
+func GetBlacklistedQuestionIDs(userID uint, assignmentID uint) ([]int64, error) {
+	var blacklistEntry models.AssignmentUserBlacklist
+	result := DB.Where("user_id = ? AND assignment_id = ?", userID, assignmentID).First(&blacklistEntry)
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			return []int64{}, nil
+		}
+		return nil, result.Error
+	}
+	return blacklistEntry.QuestionIDsPlagiarized, nil
+}
+
+func GetAssignmentByID(assignmentID uint) (*models.Assignment, error) {
+	var assignment models.Assignment
+	result := DB.Preload("Questions").First(&assignment, assignmentID)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &assignment, nil
+}
+
+// legacy function. The new one is ReportCheater()
+func AddStudentToAssignmentBlacklist(userID uint, assignmentID uint, reason string, detectionMethod string, questionIDs []int) error {
+	// HACK: If the length of questionIDs is 0, it means that this was detected via window switching, which is legacy
+	// so we assume all questions are involved
+
 	DBLock.Lock()
 	defer DBLock.Unlock()
 
+	// Convert questionIDs to pq.Int64Array for compatibility with the database
+	questionIDsArray := pq.Int64Array{}
+	for _, id := range questionIDs {
+		questionIDsArray = append(questionIDsArray, int64(id))
+	}
+
 	blacklistEntry := models.AssignmentUserBlacklist{
-		AssignmentID:    assignmentID,
-		UserID:          userID,
-		Reason:          reason,
-		DetectionMethod: detectionMethod,
+		AssignmentID:           assignmentID,
+		UserID:                 userID,
+		Reason:                 reason,
+		DetectionMethod:        detectionMethod,
+		QuestionIDsPlagiarized: questionIDsArray,
 	}
 
 	if err := DB.Create(&blacklistEntry).Error; err != nil {
@@ -251,7 +282,7 @@ func SetVivaScore(assignmentID, userID, questionID uint, score int) error {
 	}
 
 	if !answerFound {
-		return errors.New("Answer not found")
+		return errors.New("answer not found")
 	}
 
 	submission.Answers[answerIndex].AIVivaScore = score
@@ -290,4 +321,3 @@ func GetAssignmentFromQuestionID(questionID uint) (*models.Assignment, error) {
 
 	return &assignment, nil
 }
-
