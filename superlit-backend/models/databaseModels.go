@@ -33,18 +33,18 @@ type Classroom struct {
 // aka test
 type Assignment struct {
 	gorm.Model
-	Name                    string                 `json:"name"`
-	Description             string                 `json:"description"`
-	StartTime               time.Time              `json:"startTime"`
-	EndTime                 time.Time              `json:"endTime"`
-	EnableAIViva            bool                   `json:"enableAIViva"`
-	EnableAIHint            bool                   `json:"enableAIHint"`
-	EnableLeaderboard       bool                   `json:"enableLeaderboard"`
-	MaxWindowChangeAttempts int                    `json:"maxWindowChangeAttempts"`
-	Classrooms              []Classroom            `gorm:"many2many:assignment_classroom;" json:"classrooms"`
-	Questions               []Question             `gorm:"polymorphic:Parent;" json:"questions"`
-	BlacklistEntries        []AssignmentUserBlacklist `gorm:"foreignKey:AssignmentID" json:"blacklistEntries"`       // students who've been caught cheating
-	Submissions             []AssignmentSubmission `gorm:"foreignKey:AssignmentID" json:"submissions"`
+	Name                    string                    `json:"name"`
+	Description             string                    `json:"description"`
+	StartTime               time.Time                 `json:"startTime"`
+	EndTime                 time.Time                 `json:"endTime"`
+	EnableAIViva            bool                      `json:"enableAIViva"`
+	EnableAIHint            bool                      `json:"enableAIHint"`
+	EnableLeaderboard       bool                      `json:"enableLeaderboard"`
+	MaxWindowChangeAttempts int                       `json:"maxWindowChangeAttempts"`
+	Classrooms              []Classroom               `gorm:"many2many:assignment_classroom;" json:"classrooms"`
+	Questions               []Question                `gorm:"polymorphic:Parent;" json:"questions"`
+	BlacklistEntries        []AssignmentUserBlacklist `gorm:"foreignKey:AssignmentID" json:"blacklistEntries"` // students who've been caught cheating
+	Submissions             []AssignmentSubmission    `gorm:"foreignKey:AssignmentID" json:"submissions"`
 	// this is the classrooms in which the assignment is assigned.
 	// Since every classroom can have multiple assignments, and one assignment may be assigned to multiple classrooms, we have a many to many relationship
 }
@@ -137,12 +137,13 @@ type VerifiedTestCase struct {
 // AssignmentUserBlacklist is the customized join table between Assignment and User for blacklist relations.
 // It uses composite primary key (AssignmentID, UserID)
 type AssignmentUserBlacklist struct {
-	AssignmentID    uint           `gorm:"primaryKey" json:"assignmentID"`
-	Assignment      Assignment     `gorm:"foreignKey:AssignmentID" json:"-"`
-	UserID          uint           `gorm:"primaryKey" json:"userID"`
-	User            User           `gorm:"foreignKey:UserID" json:"user"`
-	Reason          string         `json:"reason"`
-	DetectionMethod string         `json:"detectionMethod"`
-	CreatedAt       time.Time      `json:"createdAt"`
-	DeletedAt       gorm.DeletedAt `json:"-"`
+	AssignmentID           uint           `gorm:"primaryKey" json:"assignmentID"`
+	Assignment             Assignment     `gorm:"foreignKey:AssignmentID" json:"-"`
+	UserID                 uint           `gorm:"primaryKey" json:"userID"`
+	User                   User           `gorm:"foreignKey:UserID" json:"user"`
+	QuestionIDsPlagiarized pq.Int64Array  `json:"questionIDsPlagiarized" gorm:"type:integer[]"`
+	Reason                 string         `json:"reason"`
+	DetectionMethod        string         `json:"detectionMethod"`
+	CreatedAt              time.Time      `json:"createdAt"`
+	DeletedAt              gorm.DeletedAt `json:"-"`
 }
