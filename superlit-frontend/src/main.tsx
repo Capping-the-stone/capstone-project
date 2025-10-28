@@ -17,6 +17,7 @@ import NewAssignmentPage from "./routes/homePages/teacher/classRoomManagement/ne
 import StudentClassroomManagement from "./routes/homePages/student/classroomManagement/classroomManagement.tsx";
 import AttemptAssignment from "./routes/homePages/student/classroomManagement/attemptAssignment.tsx";
 import ViewScore from "./routes/homePages/teacher/classRoomManagement/viewScore.tsx";
+import CodeReplay from "./routes/homePages/teacher/classRoomManagement/codeReplay.tsx";
 import EditAssignmentPage from "./routes/homePages/teacher/classRoomManagement/editAssignment.tsx";
 import ViewScoreStudent from "./routes/homePages/student/classroomManagement/components/viewScoreStudent.tsx";
 import EnterUniIDForgotPassword from "./routes/forgotPassword/enterUniID.tsx";
@@ -86,6 +87,10 @@ const router = createBrowserRouter([
   {
     path: "/home/teacher/classroom/:classroomCode/assignment/:assignmentID/scores",
     element: <ViewScore />
+  },
+  {
+    path: "/home/teacher/classroom/:classroomCode/assignment/:assignmentID/scores/replay",
+    element: <CodeReplay />
   },
   {
     path: "/home/teacher/classroom/:classroomCode/assignment/:assignmentID/edit",

@@ -20,46 +20,70 @@ export default function TeacherHomePage() {
     description: "",
   });
 
+  function urlBase64ToUint8Array(base64String: string) {
+    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+    const rawData = atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  }
+
   async function initNotifications() {
-    try {
-      if ("serviceWorker" in navigator) {
-        await navigator.serviceWorker.register("/sw.js");
-      }
-      if ("Notification" in window && Notification.permission === "default") {
-        await Notification.requestPermission();
-      }
+  try {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
 
-      if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
-      if (Notification.permission !== "granted") return;
+    const registration = await navigator.serviceWorker.register("/sw.js");
+    console.log("Service worker registered");
 
-      const sw = await navigator.serviceWorker.ready;
+    if ("Notification" in window && Notification.permission === "default") {
+      await Notification.requestPermission();
+    }
+    if (Notification.permission !== "granted") return;
 
-      var subscription = await sw.pushManager.getSubscription();
-      if (!subscription) {
-        // Fetch VAPID key from backend with JWT
-        const publicKey = "BDe7HU2_eEGMT0rsPEwG-eNmmGwphHXvhZqBm-BuC6l5JlAf17uYUpd_Dz6vgHulqJAIJt41dIn9Y6GhK6BPETk"
-        // TODO: Get this from .env file
-    
-        subscription = await sw.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: publicKey,
-        });
-      }
-      
-      // Ensure backend has latest subscription
-      await fetch("/api/notifications/subscribe", {
+    const existing = await registration.pushManager.getSubscription();
+    if (!existing) {
+      // Fetch VAPID key from backend
+      const keyResp = await fetch("/api/push/public-key", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!keyResp.ok) return;
+      const { publicKey } = await keyResp.json();
+      if (!publicKey) return;
+
+      const sub = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+
+      // POST subscription directly
+      await fetch("/notifications/subscribe", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: token?.toString() ?? "",
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(subscription),
+        body: JSON.stringify(sub),
       });
-      
-    } catch (e) {
-      console.log(e)
+      console.log("Subscription sent to backend:", sub);
+    } else {
+      // Update backend with existing subscription if needed
+      await fetch("/notifications/subscribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(existing),
+      });
+      console.log("Existing subscription sent to backend:", existing);
     }
+  } catch (e) {
+    console.error("Error initializing notifications:", e);
   }
+}
 
   function fetchUserData() {
     fetch("/api/auth/getuser", {
@@ -92,7 +116,7 @@ export default function TeacherHomePage() {
   }, []);
 
   useEffect(() => {
-    // Initialize notifications on load; minimal but includes JWT-authenticated subscription.
+    // Initialize notifications on load includes JWT-authenticated subscription.
     initNotifications();
   }, []);
 

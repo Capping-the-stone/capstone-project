@@ -262,9 +262,11 @@ export default function ViewScore() {
                     <TableHead className="font-mono">
                       Question {index} Student's Code
                     </TableHead>
+
                   </Fragment>
                 ))}
                 <TableHead className="font-mono">Total Score</TableHead>
+                <TableHead className="font-mono">Replay</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -357,6 +359,19 @@ export default function ViewScore() {
                     <TableCell className="font-mono">
                       {submission.totalScore}
                     </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="secondary"
+                        onClick={() =>
+                          navigate(
+                            `/home/teacher/classroom/${classroomCode}/assignment/${assignmentID}/scores/replay?studentID=${submission.universityID}&assignmentID=${assignmentID}`
+                          )
+                        }
+                      >
+                        Code Replay
+                      </Button>
+                    </TableCell>
+
                   </TableRow>
                 ),
               )}
@@ -420,6 +435,6 @@ export default function ViewScore() {
       </div>
 
       <AlertDialogWrapper dialog={dialog} dialogRef={dialogRef} />
-    </div>
+    </div >
   );
 }

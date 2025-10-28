@@ -1,5 +1,5 @@
 # ---- Base Stage ----
-FROM golang:1.23 AS base
+FROM golang:1.24 AS base
 WORKDIR /superlit/backend
 
 # Install firejail, gcc
