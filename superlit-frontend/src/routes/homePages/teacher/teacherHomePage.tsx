@@ -116,7 +116,7 @@ export default function TeacherHomePage() {
   }, []);
 
   useEffect(() => {
-    // Initialize notifications on load includes JWT-authenticated subscription.
+    // Initialize notifications on load; includes JWT-authenticated subscription.
     initNotifications();
   }, []);
 
