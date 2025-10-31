@@ -10,12 +10,15 @@ import json
 import redis
 import os
 import logging
+import requests
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+
+SUPERLIT_BACKEND_URL = os.getenv("SUPERLIT_BACKEND_URL", "http://superlit-backend-dev:6969/assignment/report_cheater")
 
 class CheckStudentPayload(BaseModel):
     srn: str
@@ -136,6 +139,21 @@ def check_this_guy(payload: CheckStudentPayload):
             logger.error(f"Error checking student: {result['error']}")
             raise HTTPException(status_code=404, detail=result["error"])
         
+        if result.get("is_suspected_cheating"):
+            logger.info(f"Student {payload.srn} is suspected of cheating. Reporting to superlit-backend.")
+            report_payload = {
+                "questionID": payload.questionID,
+                "universityID": payload.srn,
+                "reason": "ML model detected suspicious activity.",
+                "detectionMethod": "ML"
+            }
+            try:
+                response = requests.post(SUPERLIT_BACKEND_URL, json=report_payload)
+                response.raise_for_status()
+                logger.info("Successfully reported cheater to superlit-backend.")
+            except requests.exceptions.RequestException as e:
+                logger.error(f"Failed to report cheater to superlit-backend: {e}")
+
         # Print the result as requested
         print({
             "detectionMethod": "ML",
