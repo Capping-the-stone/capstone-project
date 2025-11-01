@@ -82,6 +82,13 @@ class RedisMLChecker:
             
             # Convert to DataFrame format for ML model
             import pandas as pd
+            rji = student_data.get("rji", 0)
+            if rji == 0:
+                rji = 1
+            # rji is set by default to 0
+            # that means rji is not set yet
+            # rji = 1 is a safe default to avoid being isolated
+            # due to it in the isolation forest model
             features_df = pd.DataFrame([{
                 "SRN": srn,
                 "total_actions": student_data.get("total_actions", 0),
@@ -90,7 +97,8 @@ class RedisMLChecker:
                 "paste_count": student_data.get("paste_count", 0),
                 "deletion_count": student_data.get("deletion_count", 0),
                 "compilation_count": student_data.get("compilation_count", 0),
-                "submission_count": student_data.get("submission_count", 0)
+                "submission_count": student_data.get("submission_count", 0),
+                "RJI": rji,
             }])
             
             # Use ML model to predict

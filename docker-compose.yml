@@ -274,8 +274,11 @@ services:
     restart: unless-stopped
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
+      - REDIS_AOF_ENABLED=yes
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data_dev:/bitnami/redis/data
 
   redis-commander-dev:
     profiles: [dev]
@@ -500,7 +503,7 @@ services:
       - cassandra_data_3:/var/lib/cassandra
 
   cassandra-init-prod:
-    profiles: [dev]
+    profiles: [prod]
     build:
       context: ./cassandra-init/
       dockerfile: Dockerfile
@@ -555,6 +558,7 @@ volumes:
   cassandra_data_1:
   cassandra_data_2:
   cassandra_data_3:
+  redis_data_dev:
 
 networks:
   default: {}

@@ -318,7 +318,7 @@ def main() -> None:
                     pass
 
         (batch_df
-            .select("srn", "questionID", "ts", "isPaste", "type", "rji")
+            .select("srn", "questionID", "ts", "isPaste", "type", "rji", "code", "numCharacters")
             .rdd
             .foreachPartition(process_partition)
         )
