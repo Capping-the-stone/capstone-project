@@ -23,6 +23,7 @@ export interface InsertEvent extends BaseLogEvent {
   offset: number; // UTF-16 code unit index
   content: string; // inserted text
   isPaste: boolean;
+  numCharacters: number; // UTF-16 code units inserted
 }
 
 export interface DeleteEvent extends BaseLogEvent {

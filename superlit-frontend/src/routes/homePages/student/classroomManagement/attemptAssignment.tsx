@@ -231,6 +231,7 @@ export default function AttemptAssignment() {
                 offset: c.rangeOffset,
                 content: c.text,
                 isPaste: pasteFlagRef.current || c.text.length >= 20,
+                numCharacters: c.text.length,
               });
             }
           }
