@@ -173,7 +173,6 @@ func GetAssignmentSubmissions(c *gin.Context) {
 		UniversityID      string             `json:"universityID"`
 		Submissions       []answerSubmission `json:"submissionsAnswer"`
 		TotalScore        uint               `json:"totalScore"`
-		AvgSubmissionTime uint               `json:"avgSubmissionTime"`
 	}
 
 	var formattedReturn = make([]studentSubmission, 0)
@@ -205,9 +204,8 @@ func GetAssignmentSubmissions(c *gin.Context) {
 			formattedSubmission.Submissions[idx].AIVivaTaken = answer.AIVivaTaken
 			formattedSubmission.Submissions[idx].AIVivaScore = answer.AIVivaScore
 			formattedSubmission.Submissions[idx].StudentsCode = answer.Code
-			formattedSubmission.AvgSubmissionTime += uint(answer.UpdatedAt.Unix())
+			formattedSubmission.TotalScore += uint(answer.Score)
 		}
-		formattedSubmission.AvgSubmissionTime = formattedSubmission.AvgSubmissionTime / uint(len(submission.Answers))
 		formattedReturn = append(formattedReturn, formattedSubmission)
 	}
 
@@ -215,7 +213,6 @@ func GetAssignmentSubmissions(c *gin.Context) {
 	slices.SortFunc(formattedReturn, func(a, b studentSubmission) int {
 		return cmp.Or(
 			cmp.Compare(b.TotalScore, a.TotalScore),
-			cmp.Compare(a.AvgSubmissionTime, b.AvgSubmissionTime),
 		)
 	})
 
