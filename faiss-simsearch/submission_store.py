@@ -27,11 +27,13 @@ def persist():
 
 def store_submission(question_id, user_id, embedding, code):
     logger.info(f"Storing submission - questionID: {question_id}, userID: {user_id}")
-    logger.info(f"Embedding shape: {embedding.shape}, code length: {len(code)}")
     
     if question_id not in submission_db:
         logger.info(f"Creating new question entry for {question_id}")
         submission_db[question_id] = []
+    
+    # Remove any existing submission from the same user for the same question
+    submission_db[question_id] = [s for s in submission_db[question_id] if s['userID'] != user_id]
     
     submission_db[question_id].append({
         "userID": user_id,

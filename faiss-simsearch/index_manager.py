@@ -44,8 +44,8 @@ def add_submission(user_id, question_id, code):
         logger.info(f"Clearing index cache for question {question_id}")
         del index_cache[question_id]
 
-def find_similar_submissions(question_id, code):
-    logger.info(f"Finding similar submissions - questionID: {question_id}")
+def find_similar_submissions(question_id, code, user_id):
+    logger.info(f"Finding similar submissions - questionID: {question_id} for userID: {user_id}")
     logger.info(f"Query code: {code}")
     
     processed = preprocess(code)
@@ -77,15 +77,22 @@ def find_similar_submissions(question_id, code):
 
     logger.info(f"Query embeddings count: {len(query_embeddings)}")
     
-    stored = get_all_embeddings_for_question(question_id)
-    logger.info(f"Found {len(stored)} stored submissions for question {question_id}")
+    all_stored = get_all_embeddings_for_question(question_id)
+    # Exclude submissions from the current user
+    stored = [s for s in all_stored if s['userID'] != user_id]
+    logger.info(f"Found {len(stored)} stored submissions for question {question_id} (excluding current user)")
     
     if not stored:
-        logger.warning("No stored submissions found")
+        logger.warning("No stored submissions to compare against.")
         return []
 
     all_embeddings = np.array([s["embedding"] for s in stored]).astype('float32')
     logger.info(f"Stored embeddings shape: {all_embeddings.shape}")
+
+    # Invalidate cache if the number of stored items has changed.
+    if question_id in index_cache and len(index_cache[question_id][1]) != len(stored):
+        logger.info(f"Cache invalidation for question {question_id} due to submission count change.")
+        del index_cache[question_id]
 
     if question_id not in index_cache:
         logger.info(f"Building new FAISS index for question {question_id}")
@@ -107,12 +114,15 @@ def find_similar_submissions(question_id, code):
         logger.info(f"Processing query function {i+1} results:")
         for j, (dist, idx) in enumerate(zip(distances, indices)):
             logger.info(f"  Result {j+1}: distance={dist:.4f}, index={idx}")
+            if idx < 0: # FAISS can return -1 for no valid neighbors
+                continue
             if dist >= SIMILARITY_THRESHOLD:
                 logger.info(f"  Match found! Distance {dist:.4f} >= threshold {SIMILARITY_THRESHOLD}")
                 match = stored_data[idx]
                 similar_submissions.append({
                     "userID": match["userID"],
-                    "code": match["code"]
+                    "code": match["code"],
+                    "distance": float(dist)
                 })
                 logger.info(f"  Added match: userID={match['userID']}")
             else:

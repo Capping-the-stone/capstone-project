@@ -24,16 +24,25 @@ def put_submission(payload: SubmissionPayload):
     logger.info(f"Code length: {len(payload.code)}")
     
     try:
-        similar = find_similar_submissions(payload.questionID, payload.code)
+        # First, add/update the submission in our database
+        add_submission(payload.userID, payload.questionID, payload.code)
+        logger.info("Submission added/updated successfully")
+
+        # Now, find similar submissions, excluding the current user's
+        similar = find_similar_submissions(payload.questionID, payload.code, payload.userID)
         
         if similar:
             logger.info(f"Found {len(similar)} similar submissions. Reporting to superlit-backend.")
             
+            # Prepare reason with confidence scores
+            reasons = [f"{s['userID']} (confidence: {s['distance']:.2f})" for s in similar]
+            reason_str = f"Similar code found by FAISS. Matched with user(s): {', '.join(reasons)}"
+
             # Report cheater to superlit-backend
             report_payload = {
                 "questionID": int(payload.questionID),
                 "universityID": payload.userID,
-                "reason": f"Similar code found by FAISS. Matched with user(s): {[s['userID'] for s in similar]}",
+                "reason": reason_str,
                 "detectionMethod": "FAISS"
             }
             
@@ -43,16 +52,11 @@ def put_submission(payload: SubmissionPayload):
                 logger.info("Successfully reported cheater to superlit-backend.")
             except requests.exceptions.RequestException as e:
                 logger.error(f"Failed to report cheater to superlit-backend: {e}")
-                # Decide if we should still add the submission or not. For now, we will.
-            
-            # Even if reported, we still add the submission for future comparisons
-            add_submission(payload.userID, payload.questionID, payload.code)
-            return {"status": "ok", "cheater_reported": True}
+
+            return {"status": "ok", "cheater_reported": True, "matches": similar}
 
         else:
-            logger.info("No similar submissions found. Adding new submission.")
-            add_submission(payload.userID, payload.questionID, payload.code)
-            logger.info("Submission added successfully")
+            logger.info("No similar submissions found.")
             return {"status": "ok", "cheater_reported": False}
 
     except Exception as e:
