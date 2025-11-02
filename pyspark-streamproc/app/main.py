@@ -173,6 +173,7 @@ def main() -> None:
                 state.setdefault("earliest_log_ts", 0)
                 state.setdefault("paste_count", 0)
                 state.setdefault("deletion_count", 0)
+                state.setdefault("insertion_count", 0)
                 state.setdefault("compilation_count", 0)
                 state.setdefault("submission_count", 0)
                 state.setdefault("rji", 0.0)
@@ -201,7 +202,7 @@ def main() -> None:
 
                 # Check paste condition
                 if ev.get("isPaste"):
-                    state["paste_count"] += 1
+                    state["paste_count"] += ev.get("numCharacters", 1)
                     try:
                         _logger.info("Paste detected for key=%s (srn=%s, qid=%s)", key, srn, qid)
                     except Exception:
@@ -248,6 +249,8 @@ def main() -> None:
                             pass
                 
                 # Handle other event types
+                elif etype == "insert":
+                    state["insertion_count"] += ev.get("numCharacters", len(ev.get("content", "")))
                 elif etype == "delete":
                     num_chars = ev.get("numCharacters", 1)
                     if isinstance(num_chars, int) and num_chars > 0:  # this is in case numCharacters is not integer
@@ -300,10 +303,11 @@ def main() -> None:
                 try:
                     client.set(key, _json.dumps(state, separators=(",", ":")))
                     _logger.info(
-                        "State updated for key=%s: actions=%s paste=%s delete=%s run=%s submit=%s",
+                        "State updated for key=%s: actions=%s paste=%s insert=%s delete=%s run=%s submit=%s",
                         key,
                         state.get("total_actions"),
                         state.get("paste_count"),
+                        state.get("insertion_count"),
                         state.get("deletion_count"),
                         state.get("compilation_count"),
                         state.get("submission_count"),
