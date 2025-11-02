@@ -64,21 +64,22 @@ class RedisMLChecker:
     
     def check_student(self, srn, question_id):
         """Check if a student is cheating for a specific question"""
+
+        if not self.ml_detector:
+            return {"error": "ML model not loaded"}
+
+        if not self.redis_client:
+            return {"error": "Redis not connected"}
+
         try:
             # Create Redis key
             redis_key = f"{srn}|{question_id}"
-            
-            # Get data from Redis
-            if not self.redis_client:
-                return {"error": "Redis not connected"}
-            
             raw_data = self.redis_client.get(redis_key)
             if not raw_data:
                 return {"error": f"No data found for {srn} on question {question_id}"}
             
             # Parse Redis data
             student_data = json.loads(raw_data)
-            # TODO: add a fail safe in case JSON parsing fails here
             
             # Convert to DataFrame format for ML model
             import pandas as pd
@@ -91,20 +92,20 @@ class RedisMLChecker:
             # due to it in the isolation forest model
             features_df = pd.DataFrame([{
                 "SRN": srn,
+
                 "total_actions": student_data.get("total_actions", 0),
                 "total_time_ms": student_data.get("latest_log_ts", 0) - student_data.get("earliest_log_ts", 0),
+
                 "avg_time_per_action_ms": (student_data.get("latest_log_ts", 0) - student_data.get("earliest_log_ts", 0)) / max(student_data.get("total_actions", 1), 1),
+
                 "paste_count": student_data.get("paste_count", 0),
                 "deletion_count": student_data.get("deletion_count", 0),
                 "compilation_count": student_data.get("compilation_count", 0),
                 "submission_count": student_data.get("submission_count", 0),
+
                 "RJI": rji,
             }])
             
-            # Use ML model to predict
-            if not self.ml_detector:
-                return {"error": "ML model not loaded"}
-            # TODO: This guard clause should be moved before we attempt to get data from redis.
             
             result_df = self.ml_detector.predict(features_df)
             result = result_df.iloc[0]

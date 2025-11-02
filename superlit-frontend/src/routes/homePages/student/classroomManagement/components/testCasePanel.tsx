@@ -33,15 +33,9 @@ export default function AssignmentTestCasePanel({
   const { token } = useAuth();
   const navigate = useNavigate();
   const handleRun = async () => {
-    addLog({
-      type: "run",
-      srn: userID,
-      questionID: assignmentData.questions[currentQuestionIndex].ID,
-      ts: Date.now(),
-      code: editorData[currentQuestionIndex],
-    });
 
     const tempOutputs: string[] = [];
+    var errorCount = 0;
     await Promise.all(
       assignmentData.questions[currentQuestionIndex].exampleCases.map(
         async (testCase: any, index: any) => {
@@ -68,9 +62,19 @@ export default function AssignmentTestCasePanel({
 
           tempOutputs[index] = responseJSON.output;
           outputRef.current.scrollIntoView({ behavior: "smooth" });
+          errorCount += responseJSON.errorCount;
         },
       ),
     );
+
+    addLog({
+      type: "run",
+      srn: userID,
+      questionID: assignmentData.questions[currentQuestionIndex].ID,
+      ts: Date.now(),
+      code: editorData[currentQuestionIndex],
+      errorCount: errorCount,
+    });
 
     // update assignmentData state
     setAssignmentData((oldAssignmentData: any) => {

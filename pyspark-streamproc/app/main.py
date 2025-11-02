@@ -206,8 +206,6 @@ def main() -> None:
                         _logger.info("Paste detected for key=%s (srn=%s, qid=%s)", key, srn, qid)
                     except Exception:
                         pass
-                    trigger_ml = True
-                    trigger_reasons.append("paste")
 
                 etype = (ev.get("type") or "").lower()
                 
@@ -217,10 +215,6 @@ def main() -> None:
                     trigger_ml = True
                     trigger_reasons.append("submission")
                     
-                    # Early submit check (within 5 minutes of first log)
-                    if state.get("earliest_log_ts", 0) > 0 and ts - state["earliest_log_ts"] < 300000:  # 5 minutes in ms
-                        trigger_ml = True
-                        trigger_reasons.append("early_submit")
                     
                     # FAISS submission
                     try:

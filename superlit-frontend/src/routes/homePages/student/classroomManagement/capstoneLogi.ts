@@ -35,6 +35,7 @@ export interface DeleteEvent extends BaseLogEvent {
 export interface RunEvent extends BaseLogEvent {
   type: "run";
   code: string; // full editor text at run time
+  errorCount: number; // number of errors reported in output
 }
 
 export interface SubmissionEvent extends BaseLogEvent {
