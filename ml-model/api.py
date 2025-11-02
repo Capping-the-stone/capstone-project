@@ -90,20 +90,25 @@ class RedisMLChecker:
             # that means rji is not set yet
             # rji = 1 is a safe default to avoid being isolated
             # due to it in the isolation forest model
+
+            # Calculate new metrics
+            total_actions = student_data.get("total_actions", 0)
+            total_inserted_chars = student_data.get("insertion_count", 0)
+            total_deleted_chars = student_data.get("deletion_count", 0)
+
+            deletion_ratio = total_deleted_chars / total_inserted_chars if total_inserted_chars > 0 else 1.0
+            insertion_ratio = total_inserted_chars / total_actions if total_actions > 0 else 0.0
+            code_churn_rate = (total_inserted_chars + total_deleted_chars) / total_actions if total_actions > 0 else 0.0
+
             features_df = pd.DataFrame([{
                 "SRN": srn,
-
-                "total_actions": student_data.get("total_actions", 0),
-                "total_time_ms": student_data.get("latest_log_ts", 0) - student_data.get("earliest_log_ts", 0),
-
-                "avg_time_per_action_ms": (student_data.get("latest_log_ts", 0) - student_data.get("earliest_log_ts", 0)) / max(student_data.get("total_actions", 1), 1),
-
                 "paste_count": student_data.get("paste_count", 0),
-                "deletion_count": student_data.get("deletion_count", 0),
+                "deletion_ratio": deletion_ratio,
+                "insertion_ratio": insertion_ratio,
                 "compilation_count": student_data.get("compilation_count", 0),
                 "submission_count": student_data.get("submission_count", 0),
-
                 "RJI": rji,
+                "code_churn_rate": code_churn_rate,
             }])
             
             
@@ -118,11 +123,13 @@ class RedisMLChecker:
                 "is_suspected_cheating": bool(result["is_suspected_cheating"]),
                 "anomaly_score": int(result["anomaly_score"]),
                 "features": {
-                    "total_actions": int(student_data.get("total_actions", 0)),
                     "paste_count": int(student_data.get("paste_count", 0)),
-                    "deletion_count": int(student_data.get("deletion_count", 0)),
+                    "deletion_ratio": deletion_ratio,
+                    "insertion_ratio": insertion_ratio,
                     "compilation_count": int(student_data.get("compilation_count", 0)),
-                    "submission_count": int(student_data.get("submission_count", 0))
+                    "submission_count": int(student_data.get("submission_count", 0)),
+                    "RJI": rji,
+                    "code_churn_rate": code_churn_rate,
                 }
             }
             

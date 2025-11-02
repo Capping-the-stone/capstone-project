@@ -226,6 +226,9 @@ class CheatingDetector:
             palette={True: 'red', False: 'blue'}, 
             plot_kws={'s': 50, 'edgecolor': 'black'}
         )
+        plt.savefig(save_path)
+        logger.info(f"Visualization saved to {save_path}")
+        plt.show()
 
 
 def main():
