@@ -1,0 +1,8 @@
+{
+  "model_name": "cheating_detector_20251102_151634",
+  "contamination": 0.02,
+  "random_state": 42,
+  "trained_at": "2025-11-02T15:16:34.845235",
+  "model_path": "models/cheating_detector_20251102_151634.joblib",
+  "scaler_path": "models/cheating_detector_20251102_151634_scaler.joblib"
+}

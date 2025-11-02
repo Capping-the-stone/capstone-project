@@ -209,12 +209,13 @@ class CheatingDetector:
         logger.info("Generating visualization...")
         
         important_features = [
-            "total_actions", 
-            "total_time_ms", 
-            "avg_time_per_action_ms", 
-            "paste_count", 
-            "deletion_count",
-            "RJI"
+            "insertion_ratio",
+            "deletion_ratio",
+            "RJI",
+            "code_churn_rate",
+            "paste_count",
+            "compilation_count",
+            "submission_count"
         ]
         
         # Create pairwise scatter plots
@@ -236,7 +237,7 @@ def main():
     logger.info(f"Loaded {len(features_df)} student records")
     
     # Initialize detector
-    detector = CheatingDetector(contamination=0.05, random_state=42)
+    detector = CheatingDetector(contamination=0.02, random_state=42)
     
     # Train and save model
     result_df = detector.train_and_save(features_df, save_model=True)

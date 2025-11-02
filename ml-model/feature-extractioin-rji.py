@@ -86,28 +86,37 @@ def extract_features(df):
     # Sort by time
     df = df.sort_values(by="timestamp").reset_index(drop=True)
 
-    # Basic temporal and behavioral features
-    total_actions = len(df)
-    total_typing_time = df["timestamp"].iloc[-1] - df["timestamp"].iloc[0] if total_actions > 1 else 0
-    avg_typing_speed = total_typing_time / total_actions if total_actions > 0 else 0
+    # Calculate character differences for each action
+    df['char_diff'] = df['editorContentAfter'].str.len() - df['editorContentBefore'].str.len()
+    df['inserted_chars'] = df['char_diff'].apply(lambda x: x if x > 0 else 0)
+    df['deleted_chars'] = df['char_diff'].apply(lambda x: -x if x < 0 else 0)
 
+    # Totals
+    total_actions = len(df)
+    total_inserted_chars = df['inserted_chars'].sum()
+    total_deleted_chars = df['deleted_chars'].sum()
+
+    # Behavioral features
     paste_count = df["isPaste"].sum()
-    delete_count = df["isDeletion"].sum()
     compile_count = df["isCompilation"].sum()
     submit_count = df["isSubmission"].sum()
+
+    # Ratios and rates
+    deletion_ratio = total_deleted_chars / total_inserted_chars if total_inserted_chars > 0 else 1.0
+    insertion_ratio = total_inserted_chars / total_actions if total_actions > 0 else 0.0
+    code_churn_rate = (total_inserted_chars + total_deleted_chars) / total_actions if total_actions > 0 else 0.0
 
     # Compute RJI
     rji_value = compute_rji(df)
 
     return {
-        "total_actions": total_actions,
-        "total_time_ms": total_typing_time,
-        "avg_time_per_action_ms": avg_typing_speed,
         "paste_count": paste_count,
-        "deletion_count": delete_count,
+        "deletion_ratio": deletion_ratio,
+        "insertion_ratio": insertion_ratio,
         "compilation_count": compile_count,
         "submission_count": submit_count,
         "RJI": rji_value,
+        "code_churn_rate": code_churn_rate,
     }
 
 
