@@ -310,15 +310,16 @@ export default function AttemptAssignment() {
         console.log("resized and not full screen");
         setDialog({
           title: "No cheating!",
-          description: `You are not allowed to cheat. Kindly stay on the full screen view. You are now being redirected out of the assignment. Click on the 'attempt' button again and you'll be back on the assignment screen. If you think this is a mistake, please contact your teacher.`,
-          onOk: () => navigate(-1),
+          description: `You are not allowed to cheat. Kindly stay on the full screen view. Click on the 'attempt' button again and you'll be back on the assignment screen. If you think this is a mistake, please contact your teacher.`,
+          onOk: () => {
+            navigate(-1);
+            // exit from full screen
+            if (document.fullscreenElement) {
+              document.exitFullscreen();
+            }
+          },
         });
         dialogRef.current.click();
-        setTimeout(() => {
-          navigate(-1);
-          // exit from full screen
-          document.exitFullscreen();
-        }, 15000);
       }
     };
 
