@@ -228,16 +228,55 @@ func AddStudentToAssignmentBlacklist(userID uint, assignmentID uint, reason stri
 		questionIDsArray = append(questionIDsArray, int64(id))
 	}
 
-	blacklistEntry := models.AssignmentUserBlacklist{
-		AssignmentID:           assignmentID,
-		UserID:                 userID,
-		Reason:                 reason,
-		DetectionMethod:        detectionMethod,
-		QuestionIDsPlagiarized: questionIDsArray,
-	}
+	// Check if an entry already exists
+	var existingEntry models.AssignmentUserBlacklist
+	result := DB.Where("assignment_id = ? AND user_id = ?", assignmentID, userID).First(&existingEntry)
 
-	if err := DB.Create(&blacklistEntry).Error; err != nil {
-		return err
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			// No existing entry, create a new one
+			blacklistEntry := models.AssignmentUserBlacklist{
+				AssignmentID:           assignmentID,
+				UserID:                 userID,
+				Reason:                 reason,
+				DetectionMethod:        detectionMethod,
+				QuestionIDsPlagiarized: questionIDsArray,
+			}
+
+			if err := DB.Create(&blacklistEntry).Error; err != nil {
+				return err
+			}
+		} else {
+			return result.Error
+		}
+	} else {
+		// Entry exists, append to existing reason and detection method
+		updatedReason := existingEntry.Reason + " | " + reason
+		updatedDetectionMethod := existingEntry.DetectionMethod + " | " + detectionMethod
+
+		// Merge question IDs (avoid duplicates)
+		questionIDMap := make(map[int64]bool)
+		for _, qid := range existingEntry.QuestionIDsPlagiarized {
+			questionIDMap[qid] = true
+		}
+		for _, qid := range questionIDsArray {
+			questionIDMap[qid] = true
+		}
+
+		mergedQuestionIDs := pq.Int64Array{}
+		for qid := range questionIDMap {
+			mergedQuestionIDs = append(mergedQuestionIDs, qid)
+		}
+
+		if err := DB.Model(&models.AssignmentUserBlacklist{}).
+			Where("assignment_id = ? AND user_id = ?", assignmentID, userID).
+			Updates(map[string]interface{}{
+				"reason":                   updatedReason,
+				"detection_method":         updatedDetectionMethod,
+				"question_ids_plagiarized": mergedQuestionIDs,
+			}).Error; err != nil {
+			return err
+		}
 	}
 
 	return nil
