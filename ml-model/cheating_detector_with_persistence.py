@@ -272,7 +272,7 @@ def load_and_predict_example():
     detector.load_model(latest_model)
     
     # Load new data for prediction
-    features_df = pd.read_csv("extracted_features.csv")
+    features_df = pd.read_csv("nocs.csv")
     
     # Make predictions
     result_df = detector.predict(features_df)

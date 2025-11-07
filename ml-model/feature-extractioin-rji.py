@@ -98,8 +98,8 @@ def extract_features(df):
 
     # Behavioral features
     paste_count = df["isPaste"].sum()
-    compile_count = df["isCompilation"].sum()
-    submit_count = df["isSubmission"].sum()
+    # compile_count = df["isCompilation"].sum()
+    # submit_count = df["isSubmission"].sum()
 
     # Ratios and rates
     deletion_ratio = total_deleted_chars / total_inserted_chars if total_inserted_chars > 0 else 1.0
@@ -113,8 +113,8 @@ def extract_features(df):
         "paste_count": paste_count,
         "deletion_ratio": deletion_ratio,
         "insertion_ratio": insertion_ratio,
-        "compilation_count": compile_count,
-        "submission_count": submit_count,
+        #"compilation_count": compile_count,
+        #"submission_count": submit_count,
         "RJI": rji_value,
         "code_churn_rate": code_churn_rate,
     }
@@ -143,8 +143,8 @@ if __name__ == "__main__":
     print(features_df.head())
     print(f"Processed {len(features_df)} student logs.")
     print(features_df.columns)
-    features_df.to_csv("extracted_features_rji.csv", index=False)
-    print("Features saved to extracted_features_rji.csv")
+    features_df.to_csv("nocs.csv", index=False)
+    print("Features saved to nocs.csv")
 
     low_rji_df = features_df[features_df["RJI"] < 0.75]
     print("\nStudents with RJI < 0.75:")
