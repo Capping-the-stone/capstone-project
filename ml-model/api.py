@@ -100,15 +100,19 @@ class RedisMLChecker:
             insertion_ratio = total_inserted_chars / total_actions if total_actions > 0 else 0.0
             code_churn_rate = (total_inserted_chars + total_deleted_chars) / total_actions if total_actions > 0 else 0.0
 
+            # CRITICAL: Feature order and types must match training data exactly
+            # The StandardScaler in the model expects features in this specific order
+            # Order: paste_count, deletion_ratio, insertion_ratio, compilation_count, 
+            #        submission_count, RJI, code_churn_rate
             features_df = pd.DataFrame([{
-                "SRN": srn,
-                "paste_count": student_data.get("paste_count", 0),
-                "deletion_ratio": deletion_ratio,
-                "insertion_ratio": insertion_ratio,
-                #"compilation_count": student_data.get("compilation_count", 0),
-                #"submission_count": student_data.get("submission_count", 0),
-                "RJI": rji,
-                "code_churn_rate": code_churn_rate,
+                "paste_count": int(student_data.get("paste_count", 0)),
+                "deletion_ratio": float(deletion_ratio),
+                "insertion_ratio": float(insertion_ratio),
+                "compilation_count": int(student_data.get("compilation_count", 0)),
+                "submission_count": int(student_data.get("submission_count", 0)),
+                "RJI": float(rji),
+                "code_churn_rate": float(code_churn_rate),
+                "SRN": srn,  # Keep SRN last for proper column ordering
             }])
             
             
@@ -124,12 +128,12 @@ class RedisMLChecker:
                 "anomaly_score": int(result["anomaly_score"]),
                 "features": {
                     "paste_count": int(student_data.get("paste_count", 0)),
-                    "deletion_ratio": deletion_ratio,
-                    "insertion_ratio": insertion_ratio,
-                    #"compilation_count": int(student_data.get("compilation_count", 0)),
-                    #"submission_count": int(student_data.get("submission_count", 0)),
-                    "RJI": rji,
-                    "code_churn_rate": code_churn_rate,
+                    "deletion_ratio": float(deletion_ratio),
+                    "insertion_ratio": float(insertion_ratio),
+                    "compilation_count": int(student_data.get("compilation_count", 0)),
+                    "submission_count": int(student_data.get("submission_count", 0)),
+                    "RJI": float(rji),
+                    "code_churn_rate": float(code_churn_rate),
                 }
             }
             

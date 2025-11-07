@@ -83,6 +83,14 @@ def compute_rji(df, bin_size_ms=1000):
 
 
 def extract_features(df):
+    """
+    Extract behavioral features from student coding logs.
+    
+    Features are scaled using StandardScaler during training, so different
+    scales across features (counts vs ratios) are properly normalized.
+    
+    Returns dict with features in consistent order for model compatibility.
+    """
     # Sort by time
     df = df.sort_values(by="timestamp").reset_index(drop=True)
 
@@ -98,8 +106,8 @@ def extract_features(df):
 
     # Behavioral features
     paste_count = df["isPaste"].sum()
-    # compile_count = df["isCompilation"].sum()
-    # submit_count = df["isSubmission"].sum()
+    compile_count = df["isCompilation"].sum()
+    submit_count = df["isSubmission"].sum()
 
     # Ratios and rates
     deletion_ratio = total_deleted_chars / total_inserted_chars if total_inserted_chars > 0 else 1.0
@@ -110,13 +118,13 @@ def extract_features(df):
     rji_value = compute_rji(df)
 
     return {
-        "paste_count": paste_count,
-        "deletion_ratio": deletion_ratio,
-        "insertion_ratio": insertion_ratio,
-        #"compilation_count": compile_count,
-        #"submission_count": submit_count,
-        "RJI": rji_value,
-        "code_churn_rate": code_churn_rate,
+        "paste_count": int(paste_count),
+        "deletion_ratio": float(deletion_ratio),
+        "insertion_ratio": float(insertion_ratio),
+        "compilation_count": int(compile_count),
+        "submission_count": int(submit_count),
+        "RJI": float(rji_value),
+        "code_churn_rate": float(code_churn_rate),
     }
 
 
@@ -143,6 +151,10 @@ if __name__ == "__main__":
     print(features_df.head())
     print(f"Processed {len(features_df)} student logs.")
     print(features_df.columns)
+    
+    # IMPORTANT: Column order must remain consistent for StandardScaler
+    # Expected order: paste_count, deletion_ratio, insertion_ratio, 
+    #                 compilation_count, submission_count, RJI, code_churn_rate, SRN
     features_df.to_csv("nocs.csv", index=False)
     print("Features saved to nocs.csv")
 
