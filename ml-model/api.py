@@ -105,8 +105,8 @@ class RedisMLChecker:
                 "paste_count": student_data.get("paste_count", 0),
                 "deletion_ratio": deletion_ratio,
                 "insertion_ratio": insertion_ratio,
-                "compilation_count": student_data.get("compilation_count", 0),
-                "submission_count": student_data.get("submission_count", 0),
+                #"compilation_count": student_data.get("compilation_count", 0),
+                #"submission_count": student_data.get("submission_count", 0),
                 "RJI": rji,
                 "code_churn_rate": code_churn_rate,
             }])
@@ -126,8 +126,8 @@ class RedisMLChecker:
                     "paste_count": int(student_data.get("paste_count", 0)),
                     "deletion_ratio": deletion_ratio,
                     "insertion_ratio": insertion_ratio,
-                    "compilation_count": int(student_data.get("compilation_count", 0)),
-                    "submission_count": int(student_data.get("submission_count", 0)),
+                    #"compilation_count": int(student_data.get("compilation_count", 0)),
+                    #"submission_count": int(student_data.get("submission_count", 0)),
                     "RJI": rji,
                     "code_churn_rate": code_churn_rate,
                 }
