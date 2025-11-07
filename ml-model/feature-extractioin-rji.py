@@ -121,8 +121,8 @@ def extract_features(df):
         "paste_count": int(paste_count),
         "deletion_ratio": float(deletion_ratio),
         "insertion_ratio": float(insertion_ratio),
-        "compilation_count": int(compile_count),
-        "submission_count": int(submit_count),
+        # "compilation_count": int(compile_count),
+        # "submission_count": int(submit_count),
         "RJI": float(rji_value),
         "code_churn_rate": float(code_churn_rate),
     }

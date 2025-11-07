@@ -108,11 +108,11 @@ class RedisMLChecker:
                 "paste_count": int(student_data.get("paste_count", 0)),
                 "deletion_ratio": float(deletion_ratio),
                 "insertion_ratio": float(insertion_ratio),
-                "compilation_count": int(student_data.get("compilation_count", 0)),
-                "submission_count": int(student_data.get("submission_count", 0)),
+                # "compilation_count": int(student_data.get("compilation_count", 0)),
+                # "submission_count": int(student_data.get("submission_count", 0)),
                 "RJI": float(rji),
                 "code_churn_rate": float(code_churn_rate),
-                "SRN": srn,  # Keep SRN last for proper column ordering
+                "SRN": srn,
             }])
             
             
@@ -130,8 +130,8 @@ class RedisMLChecker:
                     "paste_count": int(student_data.get("paste_count", 0)),
                     "deletion_ratio": float(deletion_ratio),
                     "insertion_ratio": float(insertion_ratio),
-                    "compilation_count": int(student_data.get("compilation_count", 0)),
-                    "submission_count": int(student_data.get("submission_count", 0)),
+                    # "compilation_count": int(student_data.get("compilation_count", 0)),
+                    # "submission_count": int(student_data.get("submission_count", 0)),
                     "RJI": float(rji),
                     "code_churn_rate": float(code_churn_rate),
                 }

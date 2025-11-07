@@ -214,8 +214,8 @@ class CheatingDetector:
             "RJI",
             "code_churn_rate",
             "paste_count",
-            "compilation_count",
-            "submission_count"
+            # "compilation_count",
+            # "submission_count"
         ]
         
         # Create pairwise scatter plots
