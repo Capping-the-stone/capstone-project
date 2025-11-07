@@ -236,7 +236,7 @@ def main():
     logger.info("Starting cheating detection model training...")
     
     # Load features data
-    features_df = pd.read_csv("extracted_features_rji.csv")
+    features_df = pd.read_csv("nocs.csv")
     logger.info(f"Loaded {len(features_df)} student records")
     
     # Initialize detector
