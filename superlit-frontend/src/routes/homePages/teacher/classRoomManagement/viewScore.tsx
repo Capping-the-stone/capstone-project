@@ -405,6 +405,7 @@ export default function ViewScore() {
                     <TableHead>Name</TableHead>
                     <TableHead>Reason</TableHead>
                     <TableHead>Detection Method</TableHead>
+                    <TableHead>Replay</TableHead>
                     <TableHead>Excuse</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -417,6 +418,18 @@ export default function ViewScore() {
                         <TableCell>{student.user.name}</TableCell>
                         <TableCell>{student.reason}</TableCell>
                         <TableCell>{student.detectionMethod}</TableCell>
+                        <TableCell>
+                          <Button
+                            variant="secondary"
+                            onClick={() =>
+                              navigate(
+                                `/home/teacher/classroom/${classroomCode}/assignment/${assignmentID}/scores/replay?studentID=${student.user.universityID}&assignmentID=${assignmentID}`
+                              )
+                            }
+                          >
+                            Code Replay
+                          </Button>
+                        </TableCell>
                         <TableCell>
                           <Button
                             onClick={() => excuseStudent(student.user.ID)}
