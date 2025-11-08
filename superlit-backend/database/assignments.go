@@ -194,8 +194,10 @@ func SaveAssignment(assignment models.Assignment) error {
 }
 
 func GetBlacklistedQuestionIDs(userID uint, assignmentID uint) ([]int64, error) {
+	DBLock.Lock()
+	defer DBLock.Unlock()
 	var blacklistEntry models.AssignmentUserBlacklist
-	result := DB.Where("user_id = ? AND assignment_id = ?", userID, assignmentID).First(&blacklistEntry)
+	result := DB.Where("assignment_id = ? AND user_id = ?", assignmentID, userID).First(&blacklistEntry)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
 			return []int64{}, nil
