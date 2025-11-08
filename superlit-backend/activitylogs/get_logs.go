@@ -7,7 +7,6 @@ import (
 
 	"github.com/anuragrao04/superlit-backend/database"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 )
 
 func GetActivityLogs(c *gin.Context) {
@@ -25,25 +24,15 @@ func GetActivityLogs(c *gin.Context) {
 		return
 	}
 
-	value, ok := c.Get("claims")
-	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+	// Get the student's user from their university ID (srn)
+	student, err := database.GetUserByUniversityID(srn)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Student not found"})
 		return
 	}
-	claims, ok := value.(jwt.MapClaims)
-	if !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Request"})
-		return
-	}
-	userIDFloat, ok := claims["userID"].(float64)
-	if !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Request"})
-		return
-	}
-	userID := uint(userIDFloat)
 
 	// get blacklisted questions
-	blacklistedQuestionIDs, err := database.GetBlacklistedQuestionIDs(userID, uint(assignmentID))
+	blacklistedQuestionIDs, err := database.GetBlacklistedQuestionIDs(student.ID, uint(assignmentID))
 	if err != nil {
 		log.Printf("Error getting blacklisted questions: %v", err)
 		// we don't want to fail the request if this fails, so we'll just return an empty array
