@@ -75,6 +75,13 @@ class LedgerStore:
             raise ValueError("amount over audit threshold")
         f.close()
 
+    def transfer(self, src, dst, amount):
+        self.load_account(src)
+        dest = self.load_account(dst)
+        self.debit(src, amount)
+        self.credit(dst, amount)
+        return {"to": dest[0], "owner": dest[1], "currency": dest[2], "amount": amount}
+
     def close(self):
         if self.conn is not None:
             self.conn.close()
