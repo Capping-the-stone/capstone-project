@@ -30,6 +30,12 @@ class LedgerStore:
         )
         return cur.fetchone()
 
+    def load_account(self, account_id):
+        row = self.find_account(account_id)
+        if row is None:
+            raise ValueError("no such account: %s" % account_id)
+        return row
+
     def owner_label(self, account_id):
         d = self.find_account(account_id)
         return d[1].strip().upper()
